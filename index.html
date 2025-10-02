@@ -88,6 +88,8 @@
         // Fetch and display existing messages from local storage
         function fetchMessages() {
             const messages = JSON.parse(localStorage.getItem('messages')) || [];
+            // Sort messages by timestamp to ensure chronological order
+            messages.sort((a, b) => a.timestamp - b.timestamp);
             messages.forEach(displayMessage);
         }
 
