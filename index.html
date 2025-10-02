@@ -3,23 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat App</title>
+    <title>Chat Application</title>
     <style>
-        body { font-family: Arial, sans-serif; }
-        #chat { max-height: 400px; overflow-y: auto; border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; }
-        #message { width: 80%; }
-        #send { width: 18%; }
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        #chat {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            padding: 10px;
+            background: white;
+            margin-bottom: 10px;
+            border-radius: 5px;
+        }
+        #message {
+            width: 75%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        #send {
+            padding: 10px;
+            background-color: #5cb85c;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        #send:hover {
+            background-color: #4cae4c;
+        }
+        .message {
+            margin: 5px 0;
+            padding: 5px;
+            border-radius: 5px;
+            background-color: #e9ecef;
+        }
     </style>
 </head>
 <body>
     <h1>Chat Application</h1>
     <div id="chat"></div>
-    <input type="text" id="message" placeholder="Type a message..." />
-    <button id="send">Send</button>
+    <div>
+        <input type="text" id="message" placeholder="Type a message..." />
+        <button id="send">Send</button>
+    </div>
 
     <script src="https://cdn.ably.com/lib/ably.min-1.js"></script>
     <script>
-        const ably = new Ably.Realtime('YOUR_ABLY_API_KEY'); // Replace with your Ably API key
+        const ably = new Ably.Realtime('Vtd4-A.9jmIFA:umDML_i9STQP4BIH_u2Jon5BlkxuiK36w37FVrkhEl4'); // Your Ably API key
         const channel = ably.channels.get('chat');
 
         const chatDiv = document.getElementById('chat');
@@ -28,16 +68,24 @@
 
         channel.subscribe('message', (msg) => {
             const messageElement = document.createElement('div');
+            messageElement.className = 'message';
             messageElement.textContent = msg.data;
             chatDiv.appendChild(messageElement);
             chatDiv.scrollTop = chatDiv.scrollHeight; // Auto-scroll
         });
 
         sendButton.addEventListener('click', () => {
-            const message = messageInput.value;
+            const message = messageInput.value.trim();
             if (message) {
                 channel.publish('message', message);
                 messageInput.value = ''; // Clear input
+            }
+        });
+
+        // Optional: Send message on Enter key press
+        messageInput.addEventListener('keypress', (event) => {
+            if (event.key === 'Enter') {
+                sendButton.click();
             }
         });
     </script>
