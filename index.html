@@ -47,10 +47,18 @@
             border-radius: 5px;
             background-color: #e9ecef;
         }
+        #username {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
     </style>
 </head>
 <body>
     <h1>Chat Application</h1>
+    <input type="text" id="username" placeholder="Enter your username..." />
     <div id="chat"></div>
     <div>
         <input type="text" id="message" placeholder="Type a message..." />
@@ -65,29 +73,65 @@
         const chatDiv = document.getElementById('chat');
         const messageInput = document.getElementById('message');
         const sendButton = document.getElementById('send');
+        const usernameInput = document.getElementById('username');
 
-        channel.subscribe('message', (msg) => {
+        // Set username from local storage if it exists
+        const savedUsername = localStorage.getItem('username');
+        if (savedUsername) {
+            usernameInput.value = savedUsername;
+        }
+
+        // Fetch existing messages (this is just an example; Ably does not store messages)
+        function fetchMessages() {
+            // In a real implementation, you would use a database to retrieve messages
+            // Here we simulate fetching existing messages
+            channel.history((result) => {
+                result.items.forEach(item => {
+                    displayMessage(item.data);
+                });
+            });
+        }
+
+        // Display a message
+        function displayMessage(message) {
             const messageElement = document.createElement('div');
             messageElement.className = 'message';
-            messageElement.textContent = msg.data;
+            messageElement.textContent = message;
             chatDiv.appendChild(messageElement);
             chatDiv.scrollTop = chatDiv.scrollHeight; // Auto-scroll
+        }
+
+        // Subscribe to incoming messages
+        channel.subscribe('message', (msg) => {
+            displayMessage(msg.data);
         });
 
-        sendButton.addEventListener('click', () => {
+        // Send message
+        function sendMessage() {
+            const username = usernameInput.value.trim();
             const message = messageInput.value.trim();
-            if (message) {
-                channel.publish('message', message);
+            if (username && message) {
+                channel.publish('message', `${username}: ${message}`);
                 messageInput.value = ''; // Clear input
             }
-        });
+        }
 
-        // Optional: Send message on Enter key press
+        // Event listeners
+        sendButton.addEventListener('click', sendMessage);
         messageInput.addEventListener('keypress', (event) => {
             if (event.key === 'Enter') {
-                sendButton.click();
+                sendMessage();
             }
         });
+        usernameInput.addEventListener('change', () => {
+            const username = usernameInput.value.trim();
+            if (username) {
+                localStorage.setItem('username', username);
+            }
+        });
+
+        // Fetch existing messages on page load
+        fetchMessages();
     </script>
 </body>
 </html>
