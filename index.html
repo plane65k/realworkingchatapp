@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat App</title>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        #chat { max-height: 400px; overflow-y: auto; border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; }
+        #message { width: 80%; }
+        #send { width: 18%; }
+    </style>
+</head>
+<body>
+    <h1>Chat Application</h1>
+    <div id="chat"></div>
+    <input type="text" id="message" placeholder="Type a message..." />
+    <button id="send">Send</button>
+
+    <script src="https://cdn.ably.com/lib/ably.min-1.js"></script>
+    <script>
+        const ably = new Ably.Realtime('YOUR_ABLY_API_KEY'); // Replace with your Ably API key
+        const channel = ably.channels.get('chat');
+
+        const chatDiv = document.getElementById('chat');
+        const messageInput = document.getElementById('message');
+        const sendButton = document.getElementById('send');
+
+        channel.subscribe('message', (msg) => {
+            const messageElement = document.createElement('div');
+            messageElement.textContent = msg.data;
+            chatDiv.appendChild(messageElement);
+            chatDiv.scrollTop = chatDiv.scrollHeight; // Auto-scroll
+        });
+
+        sendButton.addEventListener('click', () => {
+            const message = messageInput.value;
+            if (message) {
+                channel.publish('message', message);
+                messageInput.value = ''; // Clear input
+            }
+        });
+    </script>
+</body>
+</html>
