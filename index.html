@@ -112,27 +112,6 @@
         .pin-box button {
             padding: 10px 18px; border-radius: 8px; border: none; background: #5cb85c; color: #fff; cursor: pointer;
         }
-
-        .context-menu {
-            display: none;
-            position: absolute;
-            background: white;
-            border: 1px solid #ccc;
-            border-radius: 8px;
-            z-index: 10;
-            padding: 5px;
-        }
-
-        .context-menu button {
-            background: transparent;
-            border: none;
-            color: #007bff;
-            cursor: pointer;
-        }
-
-        .context-menu button:hover {
-            text-decoration: underline;
-        }
     </style>
 </head>
 <body>
@@ -227,31 +206,7 @@
             content = `<a href="${message}" target="_blank">${message}</a>`;
         }
 
-        msgEl.innerHTML = `<strong>${username}</strong>: ${content} <span style="font-size:0.8em;color:#666;">${new Date(timestamp).toLocaleTimeString()}</span>`;
-
-        // Add context menu for the user's own messages
-        if (username === localStorage.getItem('username')) {
-            const contextMenu = document.createElement('div');
-            contextMenu.className = 'context-menu';
-            contextMenu.innerHTML = `<button onclick="deleteMessage('${messageId}', this)">Delete</button>`;
-            msgEl.appendChild(contextMenu);
-
-            // Show context menu on message click
-            msgEl.onclick = (event) => {
-                if (event.target !== contextMenu) {
-                    contextMenu.style.display = 'block';
-                    contextMenu.style.top = `${event.clientY}px`;
-                    contextMenu.style.left = `${event.clientX}px`;
-                }
-            };
-
-            // Hide context menu on outside click
-            document.addEventListener('click', (e) => {
-                if (!msgEl.contains(e.target)) {
-                    contextMenu.style.display = 'none';
-                }
-            });
-        }
+        msgEl.innerHTML = `<strong class="username" onclick="deleteMessage('${messageId}', this)">${username}</strong>: ${content} <span style="font-size:0.8em;color:#666;">${new Date(timestamp).toLocaleTimeString()}</span>`;
 
         chatDiv.appendChild(msgEl);
         chatDiv.scrollTop = chatDiv.scrollHeight;
@@ -289,17 +244,20 @@
     }
 
     // Delete message
-    function deleteMessage(messageId, msgEl) {
-        // Remove the message from the chat
-        msgEl.parentNode.remove();
+    function deleteMessage(messageId, usernameElement) {
+        const username = usernameElement.innerText;
 
-        // Optionally, publish a deletion message to notify others
-        const deleteData = { username: localStorage.getItem('username'), messageId, deleted: true };
-        channel.publish('message', JSON.stringify(deleteData));
-        alert('Message deleted.');
+        if (username === localStorage.getItem('username')) {
+            // Remove the message from the chat
+            usernameElement.parentNode.remove();
 
-        // Note: This approach assumes that the message is identified by messageId.
-        // You may need to implement a backend to manage message deletions effectively.
+            // Publish a deletion message to notify others
+            const deleteData = { username: localStorage.getItem('username'), messageId, deleted: true };
+            channel.publish('message', JSON.stringify(deleteData));
+            alert('Message deleted.');
+        } else {
+            alert('You can only delete your own messages.');
+        }
     }
 
     sendBtn.addEventListener('click', sendMessage);
