@@ -182,7 +182,9 @@
                 messageInput.disabled = false;
                 sendBtn.disabled = false;
             }
-        } else alert('Wrong PIN');
+        } else {
+            alert('Wrong PIN');
+        }
     });
 
     // Enable chat once username is set
@@ -231,7 +233,7 @@
     // Ably history
     channel.history({ limit: 500 }, (err, resultPage) => {
         if (err) { console.error(err); return; }
-        resultPage.items.reverse().forEach(item => {
+        resultPage.items.forEach(item => {
             displayMessage(JSON.parse(item.data));
         });
     });
@@ -239,18 +241,7 @@
     // Subscribe to new messages
     channel.subscribe('message', msg => {
         const messageData = JSON.parse(msg.data);
-        if (messageData.deleted) {
-            // Handle message deletion
-            const messages = document.querySelectorAll('.message');
-            messages.forEach(msgEl => {
-                if (msgEl.querySelector('.username').innerText === messageData.username && 
-                    msgEl.innerHTML.includes(messageData.messageId)) {
-                    msgEl.remove();
-                }
-            });
-        } else {
-            displayMessage(messageData);
-        }
+        displayMessage(messageData);
     });
 
     // Send message
@@ -305,7 +296,7 @@
     function fetchMessages() {
         channel.history({ limit: 500 }, (err, resultPage) => {
             if (err) { console.error(err); return; }
-            resultPage.items.reverse().forEach(item => {
+            resultPage.items.forEach(item => {
                 displayMessage(JSON.parse(item.data));
             });
         });
