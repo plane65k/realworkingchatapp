@@ -79,13 +79,26 @@ const chatApp = document.getElementById('chatApp');
 const COMMON_PIN = '5432';
 let username = '';
 
-// PIN check
+// Check PIN once per device
+if(localStorage.getItem('chatPin') === COMMON_PIN){
+  pinOverlay.style.display='none';
+  chatApp.style.display='flex';
+  const savedName = localStorage.getItem('username');
+  if(savedName){
+    username = savedName;
+    usernameInput.value = username;
+    enableChat();
+  }
+}
+
+// PIN entry
 pinBtn.addEventListener('click', () => {
   if(pinInput.value.trim()===COMMON_PIN){
+    localStorage.setItem('chatPin', COMMON_PIN);
     pinOverlay.style.display='none';
     chatApp.style.display='flex';
     const savedName = localStorage.getItem('username');
-    if(savedName) {
+    if(savedName){
       username = savedName;
       usernameInput.value = username;
       enableChat();
@@ -95,7 +108,7 @@ pinBtn.addEventListener('click', () => {
   }
 });
 
-// Enable chat after username
+// Username input
 usernameInput.addEventListener('change', () => {
   const name = usernameInput.value.trim();
   if(!name) return;
@@ -104,14 +117,14 @@ usernameInput.addEventListener('change', () => {
   enableChat();
 });
 
-function enableChat() {
-  messageInput.disabled=false;
-  sendBtn.disabled=false;
+function enableChat(){
+  messageInput.disabled = false;
+  sendBtn.disabled = false;
   loadHistory();
 }
 
-// Display message logic (handles images & links)
-function displayMessage({username,message,timestamp}) {
+// Display message (images, links)
+function displayMessage({username,message,timestamp}){
   const msgEl = document.createElement('div');
   msgEl.className='message';
   let content = message;
@@ -125,16 +138,16 @@ function displayMessage({username,message,timestamp}) {
   chatDiv.scrollTop = chatDiv.scrollHeight;
 }
 
-// Load previous messages from Ably
+// Load all previous messages
 function loadHistory(){
-  channel.history({limit:200}).then(page=>{
+  channel.history({limit:500}).then(page=>{
     page.items.reverse().forEach(msg=>{
       displayMessage(JSON.parse(msg.data));
     });
-  });
+  }).catch(err=>console.error(err));
 }
 
-// Subscribe to new messages
+// Subscribe to live messages
 channel.subscribe('message', msg=>{
   displayMessage(JSON.parse(msg.data));
 });
