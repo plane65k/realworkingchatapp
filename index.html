@@ -130,6 +130,7 @@
         <input type="text" id="username" placeholder="Enter username..." />
         <textarea id="message" placeholder="Type message or paste image URL..." disabled></textarea>
         <button id="send" disabled>Send</button>
+        <button id="deleteLocalData">Delete Local Data</button>
     </div>
 </div>
 
@@ -148,6 +149,7 @@
     const usernameInput = document.getElementById('username');
     const messageInput = document.getElementById('message');
     const sendBtn = document.getElementById('send');
+    const deleteLocalDataBtn = document.getElementById('deleteLocalData');
     const chatDiv = document.getElementById('chat');
     const newMessageSound = document.getElementById('newMessageSound');
 
@@ -242,6 +244,18 @@
             e.preventDefault();
             sendMessage();
         }
+    });
+
+    // Delete local data
+    deleteLocalDataBtn.addEventListener('click', () => {
+        localStorage.removeItem('chatPin');
+        localStorage.removeItem('username');
+        alert('Local data deleted. Please refresh the page and re-enter your details to log in again.');
+        usernameInput.value = '';
+        messageInput.disabled = true;
+        sendBtn.disabled = true;
+        pinOverlay.style.display = 'flex'; // Show PIN overlay again
+        chatApp.style.display = 'none'; // Hide chat app
     });
 
     // Fetch existing messages on page load
