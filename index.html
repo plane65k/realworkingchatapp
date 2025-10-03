@@ -112,13 +112,6 @@
         .pin-box button {
             padding: 10px 18px; border-radius: 8px; border: none; background: #5cb85c; color: #fff; cursor: pointer;
         }
-
-        .confirm-delete {
-            display: none;
-            margin-top: 10px;
-            background: #ff4d4d;
-            color: white;
-        }
     </style>
 </head>
 <body>
@@ -213,7 +206,7 @@
             content = `<a href="${message}" target="_blank">${message}</a>`;
         }
 
-        msgEl.innerHTML = `<strong class="username" onclick="showConfirmDelete('${messageId}', this)">${username}</strong>: ${content} <span style="font-size:0.8em;color:#666;">${new Date(timestamp).toLocaleTimeString()}</span>`;
+        msgEl.innerHTML = `<strong class="username" onclick="confirmDelete('${messageId}', this)">${username}</strong>: ${content} <span style="font-size:0.8em;color:#666;">${new Date(timestamp).toLocaleTimeString()}</span>`;
 
         chatDiv.appendChild(msgEl);
         chatDiv.scrollTop = chatDiv.scrollHeight;
@@ -225,15 +218,14 @@
         }
     }
 
-    // Show confirmation button for deletion
-    function showConfirmDelete(messageId, usernameElement) {
-        const confirmBtn = document.createElement('button');
-        confirmBtn.className = 'confirm-delete';
-        confirmBtn.innerText = 'Confirm Delete';
-        confirmBtn.onclick = () => deleteMessage(messageId, usernameElement);
-        
-        // Append to the message element
-        usernameElement.parentNode.appendChild(confirmBtn);
+    // Confirm deletion of the message
+    function confirmDelete(messageId, usernameElement) {
+        const confirmation = window.prompt("Type 'y' to confirm deletion of your message:");
+        if (confirmation === 'y' || confirmation === 'Y') {
+            deleteMessage(messageId, usernameElement);
+        } else {
+            alert('Deletion cancelled.');
+        }
     }
 
     // Ably history
