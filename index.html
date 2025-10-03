@@ -5,50 +5,39 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Honest Chat</title>
 <style>
+  :root { --accent:#2c7be5; --radius:12px; --maxw:1200px; }
   body {
     margin:0;
     font-family:"Segoe UI", Roboto, sans-serif;
     background:#fff;
     color:#111;
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    height:100vh;
   }
   @media (prefers-color-scheme:dark) {
     body { background:#000; color:#eee; }
     .message { background:#1b1b1b; color:#eee; }
-    input, textarea { border:1px solid #555; color:#eee; }
+    input, textarea { border:1px solid #555; color:#eee; background:transparent; }
   }
-  .overlay, .chat-frame { 
-    display:flex; 
-    justify-content:center; 
-    align-items:center; 
-    flex-direction:column;
+  .frame{
+    width:95%; max-width:var(--maxw); height:90vh;
+    display:flex; flex-direction:row; overflow:hidden;
+    border-radius:var(--radius); margin:20px auto;
   }
-  .overlay {
-    position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:999;
-  }
-  .box{
-    background:#fff; padding:22px; border-radius:12px; width:360px; max-width:92%;
-    display:flex; flex-direction:column; gap:12px;
-  }
+  .chat-area{flex:3; padding:20px; display:flex; flex-direction:column; gap:16px; min-width:0; border:1px solid #ccc; border-radius:12px; overflow-y:auto;}
+  .message{padding:10px 14px; border-radius:10px; background:#e9ecef; word-break:break-word;}
+  .message img{max-width:300px; max-height:400px; display:block; margin-top:8px; border-radius:8px; object-fit:cover;}
+  .sidebar{flex:1; padding:20px; display:flex; flex-direction:column; gap:12px; min-width:280px; border-left:1px solid rgba(0,0,0,0.06);}
+  input, textarea{width:100%; padding:10px; border-radius:8px; border:1px solid #ccc; outline:none;}
+  textarea{height:120px; resize:none;}
+  button{padding:10px 14px; border-radius:8px; border:none; background:var(--accent); color:#fff; cursor:pointer;}
+  button:disabled{opacity:0.5; cursor:not-allowed;}
+  .overlay{position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.55); z-index:999;}
+  .box{background:#fff; padding:22px; border-radius:12px; width:360px; max-width:92%; display:flex; flex-direction:column; gap:12px;}
   @media (prefers-color-scheme:dark){.box{background:#111;color:#eee}}
-  .box input{padding:10px;border-radius:8px;border:1px solid #ccc;outline:none;}
-  .box button{padding:10px;border-radius:8px;border:none;background:#2c7be5;color:#fff;cursor:pointer;}
-  .chat-frame{
-    width:90%; max-width:1000px; height:90vh; display:flex; flex-direction:column; gap:12px;
-  }
-  #chatList{flex:1; overflow-y:auto; border:1px solid #ccc; border-radius:12px; padding:12px;}
-  .message{padding:10px 14px; border-radius:10px; background:#e9ecef; word-break:break-word; margin-bottom:8px;}
-  .message img{max-width:300px; max-height:400px; display:block; margin-top:8px; border-radius:8px;}
-  #inputArea{display:flex; gap:6px; margin-top:6px;}
-  #messageInput{flex:1; padding:10px; border-radius:8px; border:1px solid #ccc;}
-  #sendBtn{padding:10px 14px; border-radius:8px; border:none; background:#2c7be5; color:white; cursor:pointer;}
 </style>
 </head>
 <body>
 
+<!-- PIN Overlay -->
 <div class="overlay" id="pinOverlay">
   <div class="box">
     <h2>Enter PIN</h2>
@@ -57,6 +46,7 @@
   </div>
 </div>
 
+<!-- Username Overlay -->
 <div class="overlay" id="usernameOverlay" style="display:none;">
   <div class="box">
     <h2>Display Name</h2>
@@ -65,11 +55,16 @@
   </div>
 </div>
 
-<div class="chat-frame" id="chatFrame" style="display:none;">
-  <div id="chatList"></div>
-  <div id="inputArea">
-    <input type="text" id="messageInput" placeholder="Type message or image URL">
-    <button id="sendBtn">Send</button>
+<!-- Main Chat Frame -->
+<div class="frame" id="chatFrame" style="display:none;">
+  <div class="chat-area" id="chatList"></div>
+  <div class="sidebar">
+    <div>
+      <label>Display Name</label>
+      <input type="text" id="usernameDisplay" readonly>
+    </div>
+    <textarea id="messageInput" placeholder="Type message or paste image URL..." disabled></textarea>
+    <button id="sendBtn" disabled>Send</button>
   </div>
 </div>
 
@@ -89,6 +84,7 @@ const usernameBtn = document.getElementById('usernameBtn');
 
 const chatFrame = document.getElementById('chatFrame');
 const chatList = document.getElementById('chatList');
+const usernameDisplay = document.getElementById('usernameDisplay');
 const messageInput = document.getElementById('messageInput');
 const sendBtn = document.getElementById('sendBtn');
 
@@ -122,6 +118,9 @@ usernameBtn.addEventListener('click', () => {
 
 function startChat(){
   chatFrame.style.display='flex';
+  usernameDisplay.value = username;
+  messageInput.disabled = false;
+  sendBtn.disabled = false;
   loadMessages();
   chatChannel.subscribe('message', msg=>{
     const {username:un,message,timestamp}=JSON.parse(msg.data);
@@ -155,7 +154,7 @@ function displayMessage({username,message,timestamp}){
 
 sendBtn.addEventListener('click', sendMessage);
 messageInput.addEventListener('keypress', e=>{
-  if(e.key==='Enter') sendMessage();
+  if(e.key==='Enter' && !e.shiftKey) sendMessage();
 });
 
 function sendMessage(){
