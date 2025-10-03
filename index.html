@@ -133,6 +133,8 @@
     </div>
 </div>
 
+<audio id="newMessageSound" src="https://www.soundjay.com/button/sounds/button-3.mp3" preload="auto"></audio>
+
 <script src="https://cdn.ably.com/lib/ably.min-1.js"></script>
 <script>
     const COMMON_PIN = '5432';
@@ -147,6 +149,14 @@
     const messageInput = document.getElementById('message');
     const sendBtn = document.getElementById('send');
     const chatDiv = document.getElementById('chat');
+    const newMessageSound = document.getElementById('newMessageSound');
+
+    let tabActive = true;
+
+    // Listen for visibility change
+    document.addEventListener("visibilitychange", () => {
+        tabActive = !document.hidden;
+    });
 
     // PIN check
     if (localStorage.getItem('chatPin') === COMMON_PIN) {
@@ -194,12 +204,12 @@
         msgEl.innerHTML = `<strong>${username}</strong>: ${content} <span style="font-size:0.8em;color:#666;">${new Date(timestamp).toLocaleTimeString()}</span>`;
         chatDiv.appendChild(msgEl);
         chatDiv.scrollTop = chatDiv.scrollHeight;
-    }
 
-    // Fetch existing messages from local storage
-    function fetchMessages() {
-        const messages = JSON.parse(localStorage.getItem('messages')) || [];
-        messages.forEach(displayMessage);
+        // Play sound and alert if tab is not active
+        if (!tabActive) {
+            newMessageSound.play();
+            alert(`New message from ${username}: ${message}`);
+        }
     }
 
     // Ably history
@@ -213,9 +223,6 @@
     // Subscribe to new messages
     channel.subscribe('message', msg => {
         displayMessage(JSON.parse(msg.data));
-        // Save to local storage
-        const { username, message, timestamp } = JSON.parse(msg.data);
-        saveMessageToLocalStorage(username, message, timestamp);
     });
 
     // Send message
@@ -228,13 +235,6 @@
         messageInput.value = '';
     }
 
-    // Save message to local storage
-    function saveMessageToLocalStorage(username, message, timestamp) {
-        const messages = JSON.parse(localStorage.getItem('messages')) || [];
-        messages.push({ username, message, timestamp });
-        localStorage.setItem('messages', JSON.stringify(messages));
-    }
-
     sendBtn.addEventListener('click', sendMessage);
     messageInput.addEventListener('keypress', e => {
         if (e.key === 'Enter' && !e.shiftKey) {
@@ -244,6 +244,12 @@
     });
 
     // Fetch existing messages on page load
+    function fetchMessages() {
+        const messages = JSON.parse(localStorage.getItem('messages')) || [];
+        messages.forEach(displayMessage);
+    }
+
+    // Fetch messages on load
     fetchMessages();
 </script>
 
