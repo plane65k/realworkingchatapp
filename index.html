@@ -243,8 +243,8 @@
             // Handle message deletion
             const messages = document.querySelectorAll('.message');
             messages.forEach(msgEl => {
-                if (msgEl.querySelector('.username').innerText === messageData.username 
-                    && msgEl.innerHTML.includes(messageData.messageId)) {
+                if (msgEl.querySelector('.username').innerText === messageData.username && 
+                    msgEl.innerHTML.includes(messageData.messageId)) {
                     msgEl.remove();
                 }
             });
