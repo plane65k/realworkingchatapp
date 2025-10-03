@@ -5,14 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Honest Chat</title>
 <style>
-  :root {
-    --accent:#2c7be5;
-    --radius:12px;
-    --maxw:1200px;
-  }
   body {
     margin:0;
-    font-family: "Segoe UI", Roboto, sans-serif;
+    font-family:"Segoe UI", Roboto, sans-serif;
     background:#fff;
     color:#111;
     display:flex;
@@ -25,70 +20,56 @@
     .message { background:#1b1b1b; color:#eee; }
     input, textarea { border:1px solid #555; color:#eee; }
   }
-  .frame{
-    width:95%; max-width:var(--maxw); height:92vh;
-    display:flex; flex-direction:row; overflow:hidden;
-    border-radius:var(--radius); box-shadow:0 12px 40px rgba(0,0,0,0.25);
-    background:inherit;
+  .overlay, .chat-frame { 
+    display:flex; 
+    justify-content:center; 
+    align-items:center; 
+    flex-direction:column;
   }
-  .chat-area{flex:3; padding:20px; display:flex; flex-direction:column; gap:16px; min-width:0;}
-  .chat-list{flex:1; overflow:auto; display:flex; flex-direction:column; gap:10px;}
-  .message{padding:10px 14px; border-radius:10px; background:#e9ecef; word-break:break-word;}
-  .meta{font-weight:700;margin-bottom:6px;display:flex;gap:8px;align-items:center;}
-  .time{font-size:0.78rem;color:#666;font-weight:400;}
-  .message img{max-width:320px; border-radius:8px; display:block; margin-top:8px; max-height:500px; object-fit:cover;}
-  .sidebar{flex:1; padding:20px; border-left:1px solid rgba(0,0,0,0.06); display:flex; flex-direction:column; gap:12px; min-width:280px;}
-  input[type=text], textarea{width:100%; padding:10px; border-radius:8px; border:1px solid #ccc; background:transparent; outline:none;}
-  textarea{height:120px; resize:none;}
-  button{padding:10px 14px; border-radius:10px; border:none; background:var(--accent); color:#fff; cursor:pointer;}
-  button:disabled{opacity:0.5; cursor:not-allowed;}
-  .overlay{position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.55); z-index:999;}
-  .box{background:#fff; padding:22px; border-radius:12px; width:360px; max-width:92%;}
+  .overlay {
+    position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:999;
+  }
+  .box{
+    background:#fff; padding:22px; border-radius:12px; width:360px; max-width:92%;
+    display:flex; flex-direction:column; gap:12px;
+  }
   @media (prefers-color-scheme:dark){.box{background:#111;color:#eee}}
-  .box h2{margin:0 0 12px 0;font-size:1.2rem}
-  .row{display:flex; gap:8px}
+  .box input{padding:10px;border-radius:8px;border:1px solid #ccc;outline:none;}
+  .box button{padding:10px;border-radius:8px;border:none;background:#2c7be5;color:#fff;cursor:pointer;}
+  .chat-frame{
+    width:90%; max-width:1000px; height:90vh; display:flex; flex-direction:column; gap:12px;
+  }
+  #chatList{flex:1; overflow-y:auto; border:1px solid #ccc; border-radius:12px; padding:12px;}
+  .message{padding:10px 14px; border-radius:10px; background:#e9ecef; word-break:break-word; margin-bottom:8px;}
+  .message img{max-width:300px; max-height:400px; display:block; margin-top:8px; border-radius:8px;}
+  #inputArea{display:flex; gap:6px; margin-top:6px;}
+  #messageInput{flex:1; padding:10px; border-radius:8px; border:1px solid #ccc;}
+  #sendBtn{padding:10px 14px; border-radius:8px; border:none; background:#2c7be5; color:white; cursor:pointer;}
 </style>
 </head>
 <body>
 
 <div class="overlay" id="pinOverlay">
   <div class="box">
-    <h2>Device PIN</h2>
-    <div>Set a one-time PIN to unlock this device. Stored locally only.</div>
-    <input id="pinField" type="password" placeholder="Enter PIN">
-    <div class="row" style="margin-top:10px;">
-      <button id="pinSaveBtn">Continue</button>
-      <button id="pinClearBtn" style="background:#ddd;color:#111">Reset PIN</button>
-    </div>
+    <h2>Enter PIN</h2>
+    <input type="password" id="pinInput" placeholder="Enter common PIN">
+    <button id="pinBtn">Continue</button>
   </div>
 </div>
 
 <div class="overlay" id="usernameOverlay" style="display:none;">
   <div class="box">
-    <h2>Choose a Display Name</h2>
-    <div>Be honest! Your display name will show to everyone.</div>
-    <input id="usernameInput" type="text" placeholder="Enter your name">
-    <button id="usernameSaveBtn" style="margin-top:10px;">Save</button>
+    <h2>Display Name</h2>
+    <input type="text" id="usernameInput" placeholder="Enter your name">
+    <button id="usernameBtn">Save</button>
   </div>
 </div>
 
-<div class="frame" id="appFrame" style="display:none;">
-  <div class="chat-area">
-    <div class="chat-list" id="chatList"></div>
-    <div class="small" style="color:#666;">Messages are persistent and honest 😎</div>
-  </div>
-
-  <div class="sidebar">
-    <div>
-      <label>Logged in as:</label>
-      <input type="text" id="usernameDisplay" readonly>
-    </div>
-    <div>
-      <textarea id="messageInput" placeholder="Type a message or paste image URL..." disabled></textarea>
-    </div>
-    <div class="row">
-      <button id="sendBtn" disabled>Send</button>
-    </div>
+<div class="chat-frame" id="chatFrame" style="display:none;">
+  <div id="chatList"></div>
+  <div id="inputArea">
+    <input type="text" id="messageInput" placeholder="Type message or image URL">
+    <button id="sendBtn">Send</button>
   </div>
 </div>
 
@@ -98,128 +79,93 @@ const ABLY_KEY = "Vtd4-A.9jmIFA:umDML_i9STQP4BIH_u2Jon5BlkxuiK36w37FVrkhEl4";
 const ably = new Ably.Realtime(ABLY_KEY);
 const chatChannel = ably.channels.get('honest-chat');
 
-// DOM refs
 const pinOverlay = document.getElementById('pinOverlay');
-const pinField = document.getElementById('pinField');
-const pinSaveBtn = document.getElementById('pinSaveBtn');
-const pinClearBtn = document.getElementById('pinClearBtn');
+const pinInput = document.getElementById('pinInput');
+const pinBtn = document.getElementById('pinBtn');
 
 const usernameOverlay = document.getElementById('usernameOverlay');
 const usernameInput = document.getElementById('usernameInput');
-const usernameSaveBtn = document.getElementById('usernameSaveBtn');
+const usernameBtn = document.getElementById('usernameBtn');
 
-const appFrame = document.getElementById('appFrame');
+const chatFrame = document.getElementById('chatFrame');
 const chatList = document.getElementById('chatList');
-const usernameDisplay = document.getElementById('usernameDisplay');
 const messageInput = document.getElementById('messageInput');
 const sendBtn = document.getElementById('sendBtn');
 
-const LOCAL_PIN_KEY = 'honestChatDevicePin';
 const LOCAL_NAME_KEY = 'honestChatName';
+const COMMON_PIN = '5432';
+let username = '';
 
-// Hash PIN using PBKDF2
-async function hashPIN(pin) {
-  const enc = new TextEncoder();
-  const key = await crypto.subtle.importKey("raw", enc.encode(pin), "PBKDF2", false, ["deriveBits"]);
-  const salt = crypto.getRandomValues(new Uint8Array(16));
-  const derived = await crypto.subtle.deriveBits({name:"PBKDF2",salt,iterations:50000,hash:"SHA-256"},key,256);
-  return btoa(String.fromCharCode(...new Uint8Array(derived))) + ':' + btoa(String.fromCharCode(...salt));
-}
-async function verifyPIN(pin, stored) {
-  const [hashB64, saltB64] = stored.split(':');
-  const salt = Uint8Array.from(atob(saltB64), c=>c.charCodeAt(0));
-  const enc = new TextEncoder();
-  const key = await crypto.subtle.importKey("raw", enc.encode(pin), "PBKDF2", false, ["deriveBits"]);
-  const derived = await crypto.subtle.deriveBits({name:"PBKDF2",salt,iterations:50000,hash:"SHA-256"},key,256);
-  return btoa(String.fromCharCode(...new Uint8Array(derived))) === hashB64;
-}
-
-// PIN handling
-pinSaveBtn.addEventListener('click', async ()=>{
-  const val = pinField.value.trim();
-  if(!val) return alert("Enter a PIN");
-  const stored = localStorage.getItem(LOCAL_PIN_KEY);
-  if(stored){
-    const ok = await verifyPIN(val, stored);
-    if(!ok) return alert("Wrong PIN");
+pinBtn.addEventListener('click', () => {
+  if(pinInput.value === COMMON_PIN){
+    pinOverlay.style.display='none';
+    const storedName = localStorage.getItem(LOCAL_NAME_KEY);
+    if(storedName){
+      username = storedName;
+      startChat();
+    } else {
+      usernameOverlay.style.display='flex';
+    }
   } else {
-    const hash = await hashPIN(val);
-    localStorage.setItem(LOCAL_PIN_KEY, hash);
+    alert("Wrong PIN!");
   }
-  pinOverlay.style.display = 'none';
-  startUsernameFlow();
-});
-pinClearBtn.addEventListener('click', ()=>{
-  localStorage.removeItem(LOCAL_PIN_KEY);
-  alert('PIN cleared. Reload page to reset.');
 });
 
-// Username flow
-function startUsernameFlow(){
-  const storedName = localStorage.getItem(LOCAL_NAME_KEY);
-  if(storedName){
-    usernameDisplay.value = storedName;
-    initChat(storedName);
-  } else {
-    usernameOverlay.style.display = 'flex';
-  }
-}
-usernameSaveBtn.addEventListener('click', ()=>{
+usernameBtn.addEventListener('click', () => {
   const name = usernameInput.value.trim();
   if(!name) return alert("Enter a display name");
+  username = name;
   localStorage.setItem(LOCAL_NAME_KEY, name);
-  usernameDisplay.value = name;
-  usernameOverlay.style.display = 'none';
-  initChat(name);
+  usernameOverlay.style.display='none';
+  startChat();
 });
 
-// Chat
-function initChat(name){
-  appFrame.style.display = 'flex';
-  messageInput.disabled = false;
-  sendBtn.disabled = false;
+function startChat(){
+  chatFrame.style.display='flex';
+  loadMessages();
+  chatChannel.subscribe('message', msg=>{
+    const {username:un,message,timestamp}=JSON.parse(msg.data);
+    displayMessage({username:un,message,timestamp});
+  });
+}
 
-  // Load history
-  chatChannel.history({limit:100}).then(page=>{
+function loadMessages(){
+  chatChannel.history({limit:200}).then(page=>{
     chatList.innerHTML='';
     page.items.reverse().forEach(msg=>{
-      const {username,message,timestamp}=JSON.parse(msg.data);
-      displayMessage({username,message,timestamp});
+      const {username:un,message,timestamp}=JSON.parse(msg.data);
+      displayMessage({username:un,message,timestamp});
     });
-  });
-
-  chatChannel.subscribe('message', msg=>{
-    const {username,message,timestamp}=JSON.parse(msg.data);
-    displayMessage({username,message,timestamp});
   });
 }
 
 function displayMessage({username,message,timestamp}){
-  const div=document.createElement('div');
+  const div = document.createElement('div');
   div.className='message';
-  let content=`<div class="meta"><strong>${username}</strong> <span class="time">(${new Date(timestamp).toLocaleTimeString()})</span></div>`;
+  let content=`<strong>${username}</strong> <span style="font-size:0.8em;color:#666;">(${new Date(timestamp).toLocaleTimeString()})</span>`;
   if(message.match(/\.(jpeg|jpg|gif|png|webp)$/i)){
-    content+=`<img src="${message}" class="chat-img">`;
+    content+=`<br><img src="${message}">`;
   } else {
     content+=`<div>${message}</div>`;
   }
-  div.innerHTML=content;
+  div.innerHTML = content;
   chatList.appendChild(div);
-  chatList.scrollTop=chatList.scrollHeight;
+  chatList.scrollTop = chatList.scrollHeight;
 }
 
-// Sending
 sendBtn.addEventListener('click', sendMessage);
 messageInput.addEventListener('keypress', e=>{
-  if(e.key==='Enter' && !e.shiftKey) sendMessage();
+  if(e.key==='Enter') sendMessage();
 });
+
 function sendMessage(){
-  const text=messageInput.value.trim();
+  const text = messageInput.value.trim();
   if(!text) return;
-  const data={username:usernameDisplay.value,message:text,timestamp:Date.now()};
+  const data = {username,message:text,timestamp:Date.now()};
   chatChannel.publish('message', JSON.stringify(data));
   messageInput.value='';
 }
 </script>
+
 </body>
 </html>
