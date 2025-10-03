@@ -239,7 +239,18 @@
     // Subscribe to new messages
     channel.subscribe('message', msg => {
         const messageData = JSON.parse(msg.data);
-        displayMessage(messageData);
+        if (messageData.deleted) {
+            // Handle message deletion
+            const messages = document.querySelectorAll('.message');
+            messages.forEach(msgEl => {
+                if (msgEl.querySelector('.username').innerText === messageData.username 
+                    && msgEl.innerHTML.includes(messageData.messageId)) {
+                    msgEl.remove();
+                }
+            });
+        } else {
+            displayMessage(messageData);
+        }
     });
 
     // Send message
