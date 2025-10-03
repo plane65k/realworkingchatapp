@@ -212,19 +212,11 @@
         }
     }
 
-    // Fetch existing messages from local storage
-    function fetchMessages() {
-        const messages = JSON.parse(localStorage.getItem('messages')) || [];
-        messages.forEach(displayMessage);
-    }
-
     // Ably history
     channel.history({ limit: 500 }, (err, resultPage) => {
         if (err) { console.error(err); return; }
         resultPage.items.reverse().forEach(item => {
-            const messageData = JSON.parse(item.data);
-            displayMessage(messageData);
-            saveMessageToLocalStorage(messageData.username, messageData.message, messageData.timestamp);
+            displayMessage(JSON.parse(item.data));
         });
     });
 
@@ -232,7 +224,6 @@
     channel.subscribe('message', msg => {
         const messageData = JSON.parse(msg.data);
         displayMessage(messageData);
-        saveMessageToLocalStorage(messageData.username, messageData.message, messageData.timestamp);
     });
 
     // Send message
@@ -245,13 +236,6 @@
         messageInput.value = '';
     }
 
-    // Save message to local storage
-    function saveMessageToLocalStorage(username, message, timestamp) {
-        const messages = JSON.parse(localStorage.getItem('messages')) || [];
-        messages.push({ username, message, timestamp });
-        localStorage.setItem('messages', JSON.stringify(messages));
-    }
-
     sendBtn.addEventListener('click', sendMessage);
     messageInput.addEventListener('keypress', e => {
         if (e.key === 'Enter' && !e.shiftKey) {
@@ -261,6 +245,16 @@
     });
 
     // Fetch existing messages on page load
+    function fetchMessages() {
+        channel.history({ limit: 500 }, (err, resultPage) => {
+            if (err) { console.error(err); return; }
+            resultPage.items.reverse().forEach(item => {
+                displayMessage(JSON.parse(item.data));
+            });
+        });
+    }
+
+    // Fetch messages on load
     fetchMessages();
 </script>
 
