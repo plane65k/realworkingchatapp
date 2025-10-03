@@ -121,20 +121,20 @@ function startChat(){
   usernameDisplay.value = username;
   messageInput.disabled = false;
   sendBtn.disabled = false;
-  loadMessages();
-  chatChannel.subscribe('message', msg=>{
-    const {username:un,message,timestamp}=JSON.parse(msg.data);
-    displayMessage({username:un,message,timestamp});
-  });
-}
 
-function loadMessages(){
+  // Load previous messages from Ably
   chatChannel.history({limit:200}).then(page=>{
     chatList.innerHTML='';
     page.items.reverse().forEach(msg=>{
       const {username:un,message,timestamp}=JSON.parse(msg.data);
       displayMessage({username:un,message,timestamp});
     });
+  });
+
+  // Subscribe to new messages
+  chatChannel.subscribe('message', msg=>{
+    const {username:un,message,timestamp}=JSON.parse(msg.data);
+    displayMessage({username:un,message,timestamp});
   });
 }
 
@@ -160,7 +160,7 @@ messageInput.addEventListener('keypress', e=>{
 function sendMessage(){
   const text = messageInput.value.trim();
   if(!text) return;
-  const data = {username,message:text,timestamp:Date.now()};
+  const data = {username: username, message: text, timestamp: Date.now()};
   chatChannel.publish('message', JSON.stringify(data));
   messageInput.value='';
 }
