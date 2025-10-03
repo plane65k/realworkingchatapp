@@ -61,6 +61,7 @@
             background: #e9ecef;
             word-wrap: break-word;
             line-height: 1.4;
+            position: relative;
         }
 
         .message img {
@@ -194,16 +195,30 @@
     });
 
     // Display messages (with image/link support)
-    function displayMessage({ username, message, timestamp }) {
+    function displayMessage({ username, message, timestamp, messageId }) {
         const msgEl = document.createElement('div');
         msgEl.className = 'message';
         let content = message;
+
         if (message.match(/^https?:\/\/.*\.(jpg|jpeg|png|gif|webp)$/i)) {
             content = `<img src="${message}" alt="image">`;
         } else if (message.match(/^https?:\/\//i)) {
             content = `<a href="${message}" target="_blank">${message}</a>`;
         }
+
         msgEl.innerHTML = `<strong>${username}</strong>: ${content} <span style="font-size:0.8em;color:#666;">${new Date(timestamp).toLocaleTimeString()}</span>`;
+        
+        // Add delete button for the user's own messages
+        if (username === localStorage.getItem('username')) {
+            const deleteBtn = document.createElement('button');
+            deleteBtn.innerText = 'Delete';
+            deleteBtn.style.position = 'absolute';
+            deleteBtn.style.top = '10px';
+            deleteBtn.style.right = '10px';
+            deleteBtn.onclick = () => deleteMessage(messageId, msgEl);
+            msgEl.appendChild(deleteBtn);
+        }
+
         chatDiv.appendChild(msgEl);
         chatDiv.scrollTop = chatDiv.scrollHeight;
 
@@ -233,9 +248,21 @@
         const name = usernameInput.value.trim();
         const msg = messageInput.value.trim();
         if (!name || !msg) return;
-        const data = { username: name, message: msg, timestamp: Date.now() };
+        const messageId = Date.now(); // Use timestamp as a unique ID
+        const data = { username: name, message: msg, timestamp: Date.now(), messageId };
         channel.publish('message', JSON.stringify(data));
         messageInput.value = '';
+    }
+
+    // Delete message
+    function deleteMessage(messageId, msgEl) {
+        // Remove the message from the chat
+        msgEl.remove();
+
+        // Optionally, you could implement logic to remove the message from the Ably channel
+        // However, Ably does not support deleting messages directly from the history.
+        // You may need a backend service to do this if that functionality is required.
+        alert('Message deleted. (Note: This will not remove it from history for others.)');
     }
 
     sendBtn.addEventListener('click', sendMessage);
