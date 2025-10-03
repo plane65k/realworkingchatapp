@@ -1,232 +1,250 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Simple Chat</title>
-<style>
-body {
-  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-  background: linear-gradient(135deg, #74ebd5 0%, #9face6 100%);
-  margin: 0;
-  height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background-color: white;
-  color: black;
-}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Chat</title>
+    <style>
+        body {
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #74ebd5 0%, #9face6 100%);
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: black;
+        }
 
-/* Dark mode */
-@media (prefers-color-scheme: dark) {
-  body { background-color:#000; color:#fff; }
-  .chat-container { background:#111; color:#fff; }
-  .message { background:#222; color:#ddd; }
-  input, textarea { background:#222; color:#fff; border:1px solid #555; }
-}
+        /* Dark mode */
+        @media (prefers-color-scheme: dark) {
+            body { background-color: #000; color: #fff; }
+            .chat-container { background: #111; color: #fff; }
+            .message { background: #222; color: #ddd; }
+            input, textarea { background: #222; color: #fff; border: 1px solid #555; }
+        }
 
-.chat-container {
-  width: 95%;
-  max-width: 1100px;
-  height: 90vh;
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 8px 30px rgba(0,0,0,0.2);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
+        .chat-container {
+            width: 95%;
+            max-width: 1100px;
+            height: 90vh;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
 
-#chat {
-  flex: 1;
-  overflow-y: auto;
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  background: inherit;
-}
+        #chat {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            background: inherit;
+        }
 
-.sidebar {
-  display: flex;
-  flex-direction: column;
-  padding: 20px;
-  gap:10px;
-  border-top:1px solid #ddd;
-  background: inherit;
-}
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            gap: 10px;
+            border-top: 1px solid #ddd;
+            background: inherit;
+        }
 
-.message {
-  padding:10px;
-  border-radius:8px;
-  background:#e9ecef;
-  word-wrap:break-word;
-  line-height:1.4;
-}
+        .message {
+            padding: 10px;
+            border-radius: 8px;
+            background: #e9ecef;
+            word-wrap: break-word;
+            line-height: 1.4;
+        }
 
-.message img {
-  max-width:300px;
-  border-radius:6px;
-  margin-top:6px;
-  display:block;
-}
+        .message img {
+            max-width: 300px;
+            border-radius: 6px;
+            margin-top: 6px;
+            display: block;
+        }
 
-.message a { color:#2c7be5; word-break:break-all; }
+        .message a { color: #2c7be5; word-break: break-all; }
 
-input, textarea {
-  width:100%;
-  padding:10px;
-  border-radius:8px;
-  border:1px solid #ccc;
-  outline:none;
-}
+        input, textarea {
+            width: 100%;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            outline: none;
+        }
 
-textarea { resize:none; height:100px; }
+        textarea { resize: none; height: 100px; }
 
-button {
-  padding:10px 18px;
-  background:#5cb85c;
-  color:white;
-  border:none;
-  border-radius:8px;
-  cursor:pointer;
-}
+        button {
+            padding: 10px 18px;
+            background: #5cb85c;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
 
-button:disabled { opacity:0.5; cursor:not-allowed; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
 
-.overlay {
-  position:fixed; inset:0;
-  display:flex; justify-content:center; align-items:center;
-  background: rgba(0,0,0,0.6);
-  z-index:100;
-}
+        .overlay {
+            position: fixed; inset: 0;
+            display: flex; justify-content: center; align-items: center;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 100;
+        }
 
-.pin-box {
-  background:#fff; padding:30px; border-radius:12px; text-align:center; width:90%; max-width:300px;
-}
+        .pin-box {
+            background: #fff; padding: 30px; border-radius: 12px; text-align: center; width: 90%; max-width: 300px;
+        }
 
-.pin-box input {
-  width:100%; padding:12px; border-radius:8px; border:1px solid #ccc; text-align:center; margin-bottom:15px; font-size:1em;
-}
+        .pin-box input {
+            width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #ccc; text-align: center; margin-bottom: 15px; font-size: 1em;
+        }
 
-.pin-box button {
-  padding:10px 18px; border-radius:8px; border:none; background:#5cb85c; color:#fff; cursor:pointer;
-}
-</style>
+        .pin-box button {
+            padding: 10px 18px; border-radius: 8px; border: none; background: #5cb85c; color: #fff; cursor: pointer;
+        }
+    </style>
 </head>
 <body>
 
 <!-- PIN overlay -->
 <div class="overlay" id="pinOverlay">
-  <div class="pin-box">
-    <h2>Enter PIN</h2>
-    <input type="password" id="pinInput" placeholder="Enter PIN">
-    <button id="pinBtn">Continue</button>
-  </div>
+    <div class="pin-box">
+        <h2>Enter PIN</h2>
+        <input type="password" id="pinInput" placeholder="Enter PIN">
+        <button id="pinBtn">Continue</button>
+    </div>
 </div>
 
-<div class="chat-container" id="chatApp" style="display:none;">
-  <div id="chat"></div>
-  <div class="sidebar">
-    <input type="text" id="username" placeholder="Enter username..." />
-    <textarea id="message" placeholder="Type message or paste image URL..." disabled></textarea>
-    <button id="send" disabled>Send</button>
-  </div>
+<div class="chat-container" id="chatApp" style="display: none;">
+    <div id="chat"></div>
+    <div class="sidebar">
+        <input type="text" id="username" placeholder="Enter username..." />
+        <textarea id="message" placeholder="Type message or paste image URL..." disabled></textarea>
+        <button id="send" disabled>Send</button>
+    </div>
 </div>
 
 <script src="https://cdn.ably.com/lib/ably.min-1.js"></script>
 <script>
-const COMMON_PIN = '5432';
-const ably = new Ably.Realtime('Vtd4-A.9jmIFA:umDML_i9STQP4BIH_u2Jon5BlkxuiK36w37FVrkhEl4');
-const channel = ably.channels.get('chat');
+    const COMMON_PIN = '5432';
+    const ably = new Ably.Realtime('Vtd4-A.9jmIFA:umDML_i9STQP4BIH_u2Jon5BlkxuiK36w37FVrkhEl4');
+    const channel = ably.channels.get('chat');
 
-const pinOverlay = document.getElementById('pinOverlay');
-const pinInput = document.getElementById('pinInput');
-const pinBtn = document.getElementById('pinBtn');
-const chatApp = document.getElementById('chatApp');
-const usernameInput = document.getElementById('username');
-const messageInput = document.getElementById('message');
-const sendBtn = document.getElementById('send');
-const chatDiv = document.getElementById('chat');
+    const pinOverlay = document.getElementById('pinOverlay');
+    const pinInput = document.getElementById('pinInput');
+    const pinBtn = document.getElementById('pinBtn');
+    const chatApp = document.getElementById('chatApp');
+    const usernameInput = document.getElementById('username');
+    const messageInput = document.getElementById('message');
+    const sendBtn = document.getElementById('send');
+    const chatDiv = document.getElementById('chat');
 
-// PIN check
-if(localStorage.getItem('chatPin')===COMMON_PIN){
-  pinOverlay.style.display='none';
-  chatApp.style.display='flex';
-  if(localStorage.getItem('username')){
-    usernameInput.value = localStorage.getItem('username');
-    messageInput.disabled=false;
-    sendBtn.disabled=false;
-  }
-}
-
-pinBtn.addEventListener('click',()=>{
-  if(pinInput.value.trim()===COMMON_PIN){
-    localStorage.setItem('chatPin',COMMON_PIN);
-    pinOverlay.style.display='none';
-    chatApp.style.display='flex';
-    if(localStorage.getItem('username')){
-      usernameInput.value = localStorage.getItem('username');
-      messageInput.disabled=false;
-      sendBtn.disabled=false;
+    // PIN check
+    if (localStorage.getItem('chatPin') === COMMON_PIN) {
+        pinOverlay.style.display = 'none';
+        chatApp.style.display = 'flex';
+        if (localStorage.getItem('username')) {
+            usernameInput.value = localStorage.getItem('username');
+            messageInput.disabled = false;
+            sendBtn.disabled = false;
+        }
     }
-  } else alert('Wrong PIN');
-});
 
-// Enable chat once username is set
-usernameInput.addEventListener('change',()=>{
-  const name=usernameInput.value.trim();
-  if(!name) return;
-  localStorage.setItem('username',name);
-  messageInput.disabled=false;
-  sendBtn.disabled=false;
-});
+    pinBtn.addEventListener('click', () => {
+        if (pinInput.value.trim() === COMMON_PIN) {
+            localStorage.setItem('chatPin', COMMON_PIN);
+            pinOverlay.style.display = 'none';
+            chatApp.style.display = 'flex';
+            if (localStorage.getItem('username')) {
+                usernameInput.value = localStorage.getItem('username');
+                messageInput.disabled = false;
+                sendBtn.disabled = false;
+            }
+        } else alert('Wrong PIN');
+    });
 
-// Display messages (with image/link support)
-function displayMessage({username,message,timestamp}){
-  const msgEl=document.createElement('div');
-  msgEl.className='message';
-  let content=message;
-  if(message.match(/^https?:\/\/.*\.(jpg|jpeg|png|gif|webp)$/i)){
-    content=`<img src="${message}" alt="image">`;
-  } else if(message.match(/^https?:\/\//i)){
-    content=`<a href="${message}" target="_blank">${message}</a>`;
-  }
-  msgEl.innerHTML=`<strong>${username}</strong>: ${content} <span style="font-size:0.8em;color:#666;">${new Date(timestamp).toLocaleTimeString()}</span>`;
-  chatDiv.appendChild(msgEl);
-  chatDiv.scrollTop=chatDiv.scrollHeight;
-}
+    // Enable chat once username is set
+    usernameInput.addEventListener('change', () => {
+        const name = usernameInput.value.trim();
+        if (!name) return;
+        localStorage.setItem('username', name);
+        messageInput.disabled = false;
+        sendBtn.disabled = false;
+    });
 
-// Ably history
-channel.history({limit:500}, (err,resultPage)=>{
-  if(err){ console.error(err); return; }
-  resultPage.items.reverse().forEach(item=>{
-    displayMessage(JSON.parse(item.data));
-  });
-});
+    // Display messages (with image/link support)
+    function displayMessage({ username, message, timestamp }) {
+        const msgEl = document.createElement('div');
+        msgEl.className = 'message';
+        let content = message;
+        if (message.match(/^https?:\/\/.*\.(jpg|jpeg|png|gif|webp)$/i)) {
+            content = `<img src="${message}" alt="image">`;
+        } else if (message.match(/^https?:\/\//i)) {
+            content = `<a href="${message}" target="_blank">${message}</a>`;
+        }
+        msgEl.innerHTML = `<strong>${username}</strong>: ${content} <span style="font-size:0.8em;color:#666;">${new Date(timestamp).toLocaleTimeString()}</span>`;
+        chatDiv.appendChild(msgEl);
+        chatDiv.scrollTop = chatDiv.scrollHeight;
+    }
 
-// Subscribe to new messages
-channel.subscribe('message', msg=>{
-  displayMessage(JSON.parse(msg.data));
-});
+    // Fetch existing messages from local storage
+    function fetchMessages() {
+        const messages = JSON.parse(localStorage.getItem('messages')) || [];
+        messages.forEach(displayMessage);
+    }
 
-// Send message
-function sendMessage(){
-  const name=usernameInput.value.trim();
-  const msg=messageInput.value.trim();
-  if(!name||!msg) return;
-  const data={username:name,message:msg,timestamp:Date.now()};
-  channel.publish('message',JSON.stringify(data));
-  messageInput.value='';
-}
+    // Ably history
+    channel.history({ limit: 500 }, (err, resultPage) => {
+        if (err) { console.error(err); return; }
+        resultPage.items.reverse().forEach(item => {
+            displayMessage(JSON.parse(item.data));
+        });
+    });
 
-sendBtn.addEventListener('click', sendMessage);
-messageInput.addEventListener('keypress',e=>{
-  if(e.key==='Enter' && !e.shiftKey){
-    e.preventDefault();
-    sendMessage();
-  }
-});
+    // Subscribe to new messages
+    channel.subscribe('message', msg => {
+        displayMessage(JSON.parse(msg.data));
+        // Save to local storage
+        const { username, message, timestamp } = JSON.parse(msg.data);
+        saveMessageToLocalStorage(username, message, timestamp);
+    });
+
+    // Send message
+    function sendMessage() {
+        const name = usernameInput.value.trim();
+        const msg = messageInput.value.trim();
+        if (!name || !msg) return;
+        const data = { username: name, message: msg, timestamp: Date.now() };
+        channel.publish('message', JSON.stringify(data));
+        messageInput.value = '';
+    }
+
+    // Save message to local storage
+    function saveMessageToLocalStorage(username, message, timestamp) {
+        const messages = JSON.parse(localStorage.getItem('messages')) || [];
+        messages.push({ username, message, timestamp });
+        localStorage.setItem('messages', JSON.stringify(messages));
+    }
+
+    sendBtn.addEventListener('click', sendMessage);
+    messageInput.addEventListener('keypress', e => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+    });
+
+    // Fetch existing messages on page load
+    fetchMessages();
 </script>
 
 </body>
