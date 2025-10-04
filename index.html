@@ -211,7 +211,7 @@ footer button {
 <audio id="newMessageSound" src="https://www.soundjay.com/button/sounds/button-3.mp3" preload="auto"></audio>
 <script src="https://cdn.ably.com/lib/ably.min-1.js"></script>
 <script>
-const PIN_CODE = "5432"; // hidden PIN
+const PIN_CODE = "5432";
 const ably = new Ably.Realtime('Vtd4-A.9jmIFA:umDML_i9STQP4BIH_u2Jon5BlkxuiK36w37FVrkhEl4');
 const channel = ably.channels.get('chat');
 
@@ -227,7 +227,7 @@ const newMessageSound = document.getElementById('newMessageSound');
 
 let currentUser = null;
 
-// Check local storage for remembered user
+// Remember user
 if(localStorage.getItem("chatUser")){
   currentUser = JSON.parse(localStorage.getItem("chatUser"));
   pinOverlay.style.display = "none";
@@ -289,6 +289,16 @@ function displayMessage({username, message, id, deleted}){
 
   chatDiv.appendChild(msgEl);
   chatDiv.scrollTop = chatDiv.scrollHeight;
+
+  // Notification logic
+  if(username !== currentUser.username){
+    if(message.includes("@" + currentUser.username)){
+      alert(`Mentioned: ${username}: ${message}`);
+    } else {
+      alert(`New message from ${username}: ${message}`);
+    }
+    newMessageSound.play();
+  }
 }
 
 // Load history
