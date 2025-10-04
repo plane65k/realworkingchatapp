@@ -3,96 +3,128 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Chat App</title>
+<title>Android Chat App</title>
 <style>
 body {
   margin: 0;
   font-family: "Roboto", sans-serif;
-  background: #f0f0f0;
+  background: #f5f5f5;
   display: flex;
   justify-content: center;
   align-items: center;
   height: 100vh;
 }
 
-.chat-container {
-  width: 90%;
-  max-width: 800px;
-  height: 90vh;
+#pinOverlay {
+  position: fixed;
+  inset: 0;
   display: flex;
-  flex-direction: column;
-  background: #ffffff;
-  border-radius: 20px;
-  overflow: hidden;
-  box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+  justify-content: center;
+  align-items: center;
+  background: rgba(0,0,0,0.4);
+  z-index: 100;
 }
 
-/* Chat messages */
+#pinBox {
+  background: white;
+  padding: 30px;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  width: 300px;
+}
+
+#pinBox input {
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid #ccc;
+  font-size: 16px;
+}
+
+#pinBox button {
+  background: #4caf50;
+  color: white;
+  border: none;
+  padding: 12px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+#chatApp {
+  display: none;
+  flex-direction: column;
+  height: 90vh;
+  width: 95%;
+  max-width: 900px;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+  overflow: hidden;
+}
+
+header {
+  background: #4caf50;
+  color: white;
+  padding: 15px;
+  font-size: 18px;
+  font-weight: bold;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
 #chat {
   flex: 1;
   overflow-y: auto;
+  padding: 15px;
   display: flex;
   flex-direction: column;
-  padding: 16px;
   gap: 12px;
-  background: #e5ddd5;
+  background: #fafafa;
 }
 
 .message {
   max-width: 70%;
-  padding: 14px 18px;
-  border-radius: 16px;
+  padding: 12px 15px;
+  border-radius: 18px;
   font-size: 15px;
-  line-height: 1.4;
   position: relative;
   word-wrap: break-word;
   animation: slideUp 0.25s ease;
 }
 
-.message.myMessage {
+.myMessage {
   align-self: flex-end;
-  background: #dcf8c6;
+  background: #4caf50;
+  color: white;
   border-bottom-right-radius: 4px;
 }
 
-.message.otherMessage {
+.otherMessage {
   align-self: flex-start;
-  background: #ffffff;
+  background: #e0e0e0;
+  color: black;
   border-bottom-left-radius: 4px;
 }
 
-.message img {
-  max-width: 250px;
-  border-radius: 12px;
-  margin-top: 6px;
-  display: block;
-}
-
-.timestamp {
-  font-size: 11px;
-  color: #888;
-  margin-top: 4px;
-  text-align: right;
-}
-
-/* Delete menu */
 .options {
   position: absolute;
   top: 6px;
   right: 8px;
-  font-weight: bold;
   cursor: pointer;
-  color: #555;
+  font-size: 14px;
+  color: rgba(255,255,255,0.7);
 }
 
 .options-menu {
   position: absolute;
-  top: 24px;
+  top: 22px;
   right: 8px;
-  background: white;
+  background: #fff;
   border: 1px solid #ccc;
-  border-radius: 6px;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+  border-radius: 8px;
   display: none;
   z-index: 10;
 }
@@ -100,107 +132,88 @@ body {
 .options-menu button {
   background: none;
   border: none;
-  padding: 6px 12px;
   width: 100%;
+  padding: 6px 12px;
   text-align: left;
   cursor: pointer;
 }
 
-.options-menu button:hover {
-  background: #eee;
-}
+.options-menu button:hover { background: #f0f0f0; }
 
-/* Footer */
 footer {
   display: flex;
-  padding: 10px;
-  border-top: 1px solid #ddd;
+  padding: 12px;
   background: #fff;
+  border-top: 1px solid #ddd;
 }
 
 footer input {
   flex: 1;
-  padding: 12px 16px;
+  padding: 12px;
   border-radius: 24px;
   border: 1px solid #ccc;
-  font-size: 15px;
+  margin-right: 10px;
   outline: none;
+  font-size: 15px;
 }
 
 footer button {
+  background: #4caf50;
+  border: none;
+  border-radius: 50%;
   width: 48px;
   height: 48px;
-  border-radius: 50%;
-  border: none;
-  background: #4caf50;
   color: white;
   font-size: 20px;
-  margin-left: 10px;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* PIN overlay */
-.overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.6);
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 100;
 }
 
-.pin-box {
-  background: white;
-  padding: 30px;
-  border-radius: 20px;
-  text-align: center;
-  width: 90%;
-  max-width: 350px;
-}
-
-.pin-box input {
-  width: 100%;
-  padding: 14px;
-  border-radius: 14px;
-  border: 1px solid #ccc;
-  margin-bottom: 15px;
-  font-size: 16px;
-  text-align: center;
-}
-
-.pin-box button {
-  background: #4caf50;
-  border: none;
-  color: white;
-  padding: 12px 20px;
-  border-radius: 20px;
-  cursor: pointer;
-}
-
-/* Animations */
 @keyframes slideUp {
-  from { opacity: 0; transform: translateY(10px);}
-  to { opacity: 1; transform: translateY(0);}
+  from {opacity:0; transform: translateY(10px);}
+  to {opacity:1; transform: translateY(0);}
+}
+
+/* Loading circle */
+#loading {
+  display: none;
+  justify-content: center;
+  align-items: center;
+  height: 100px;
+}
+.loader {
+  border: 6px solid #f3f3f3;
+  border-top: 6px solid #4caf50;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  0% { transform: rotate(0deg);}
+  100% { transform: rotate(360deg);}
 }
 </style>
 </head>
 <body>
 
 <!-- PIN overlay -->
-<div class="overlay" id="pinOverlay">
-  <div class="pin-box">
-    <h2>Enter PIN</h2>
+<div id="pinOverlay">
+  <div id="pinBox">
     <input type="text" id="usernameInput" placeholder="Enter username">
     <input type="password" id="pinInput" placeholder="Enter PIN">
-    <button id="pinBtn">Continue</button>
+    <button id="pinBtn">Enter Chat</button>
   </div>
 </div>
 
-<div class="chat-container" id="chatApp" style="display:none;">
+<div id="chatApp">
+  <header>
+    <span>Chat App</span>
+    <button onclick="logout()" style="background:none;border:none;color:white;cursor:pointer;">Sign out</button>
+  </header>
+  <div id="loading"><div class="loader"></div></div>
   <div id="chat"></div>
   <footer>
     <input type="text" id="messageInput" placeholder="Type a message...">
@@ -209,6 +222,7 @@ footer button {
 </div>
 
 <audio id="newMessageSound" src="https://www.soundjay.com/button/sounds/button-3.mp3" preload="auto"></audio>
+
 <script src="https://cdn.ably.com/lib/ably.min-1.js"></script>
 <script>
 const PIN_CODE = "5432";
@@ -220,10 +234,11 @@ const usernameInput = document.getElementById('usernameInput');
 const pinInput = document.getElementById('pinInput');
 const pinBtn = document.getElementById('pinBtn');
 const chatApp = document.getElementById('chatApp');
+const chatDiv = document.getElementById('chat');
 const messageInput = document.getElementById('messageInput');
 const sendBtn = document.getElementById('sendBtn');
-const chatDiv = document.getElementById('chat');
 const newMessageSound = document.getElementById('newMessageSound');
+const loadingDiv = document.getElementById('loading');
 
 let currentUser = null;
 
@@ -235,26 +250,22 @@ if(localStorage.getItem("chatUser")){
   loadHistory();
 }
 
-// PIN overlay login
-pinBtn.addEventListener('click', () => {
+// PIN login
+pinBtn.addEventListener('click', ()=>{
   const username = usernameInput.value.trim();
   const pin = pinInput.value.trim();
   if(!username) return;
   if(pin !== PIN_CODE) return;
   currentUser = {username};
   localStorage.setItem("chatUser", JSON.stringify(currentUser));
-  pinOverlay.style.display = "none";
-  chatApp.style.display = "flex";
+  pinOverlay.style.display="none";
+  chatApp.style.display="flex";
   loadHistory();
 });
 
-// Display message
-function displayMessage({username, message, id, deleted}){
+function displayMessage({username, message, id, deleted}, live=false){
   const div = document.querySelector(`[data-id="${id}"]`);
-  if(deleted && div){
-    div.innerHTML = "<em>Message deleted</em>";
-    return;
-  }
+  if(deleted && div){ div.innerHTML="<em>Message deleted</em>"; return; }
 
   const msgEl = document.createElement('div');
   msgEl.className = "message " + (username===currentUser.username ? "myMessage":"otherMessage");
@@ -277,12 +288,12 @@ function displayMessage({username, message, id, deleted}){
     menu.className = 'options-menu';
     const delBtn = document.createElement('button');
     delBtn.textContent = "Delete";
-    delBtn.onclick = () => { 
-      channel.publish('message', JSON.stringify({id, deleted:true})); 
-      menu.style.display="none"; 
+    delBtn.onclick = () => {
+      channel.publish('message', JSON.stringify({id, deleted:true}));
+      menu.style.display="none";
     };
     menu.appendChild(delBtn);
-    options.onclick = () => { menu.style.display = menu.style.display==='block'?"none":"block"; };
+    options.onclick = ()=>{menu.style.display = menu.style.display==='block'?"none":"block";};
     msgEl.appendChild(options);
     msgEl.appendChild(menu);
   }
@@ -290,9 +301,9 @@ function displayMessage({username, message, id, deleted}){
   chatDiv.appendChild(msgEl);
   chatDiv.scrollTop = chatDiv.scrollHeight;
 
-  // Notification logic
-  if(username !== currentUser.username){
-    if(message.includes("@" + currentUser.username)){
+  // Live message alert logic
+  if(live && username !== currentUser.username){
+    if(message.includes("@"+currentUser.username)){
       alert(`Mentioned: ${username}: ${message}`);
     } else {
       alert(`New message from ${username}: ${message}`);
@@ -301,33 +312,40 @@ function displayMessage({username, message, id, deleted}){
   }
 }
 
-// Load history
 function loadHistory(){
-  channel.history({limit: 200, direction:'forwards'}, (err, resultPage) => {
+  loadingDiv.style.display = "flex";
+  channel.history({limit:200,direction:'forwards'}, (err, resultPage)=>{
+    loadingDiv.style.display = "none";
     if(err) return console.error(err);
-    resultPage.items.forEach(item => displayMessage(JSON.parse(item.data)));
+    resultPage.items.forEach(item=>{
+      displayMessage(JSON.parse(item.data), false);
+    });
   });
 }
 
-// Subscribe to live updates
-channel.subscribe('message', msg => displayMessage(JSON.parse(msg.data)));
+// Subscribe live
+channel.subscribe('message', msg=>{
+  displayMessage(JSON.parse(msg.data), true);
+});
 
 // Send message
-sendBtn.addEventListener('click', () => {
+sendBtn.addEventListener('click', ()=>{
   const msg = messageInput.value.trim();
   if(!msg || !currentUser) return;
   const id = Date.now() + '-' + Math.random();
   const data = {id, username: currentUser.username, message: msg};
   channel.publish('message', JSON.stringify(data));
-  messageInput.value = '';
+  messageInput.value='';
 });
 
 messageInput.addEventListener('keypress', e=>{
-  if(e.key==='Enter' && !e.shiftKey){
-    e.preventDefault();
-    sendBtn.click();
-  }
+  if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendBtn.click(); }
 });
+
+function logout(){
+  localStorage.removeItem("chatUser");
+  location.reload();
+}
 </script>
 </body>
 </html>
