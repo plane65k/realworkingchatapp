@@ -224,16 +224,19 @@ function displayMessage({username,message,id,deleted}, live=false){
   msgEl.className = "message " + (username===currentUser.username ? "myMessage":"otherMessage");
   msgEl.dataset.id = id;
 
-  let content = message;
-  if(message.match(/^https?:\/\/.*\.(jpg|jpeg|png|gif|webp)$/i)){
-    content = `<img src="${message}">`;
-  } else if(message.match(/^https?:\/\//i)){
-    content = `<a href="${message}" target="_blank">${message}</a>`;
+  let content = deleted ? "<em>Message deleted</em>" : message;
+
+  if(!deleted){
+    if(message.match(/^https?:\/\/.*\.(jpg|jpeg|png|gif|webp)$/i)){
+      content = `<img src="${message}">`;
+    } else if(message.match(/^https?:\/\//i)){
+      content = `<a href="${message}" target="_blank">${message}</a>`;
+    }
   }
 
   msgEl.innerHTML = `<div>${username}: ${content}</div>`;
 
-  if(username===currentUser.username){
+  if(username===currentUser.username && !deleted){
     const options = document.createElement('div');
     options.className='options';
     options.textContent='⋮';
@@ -244,15 +247,12 @@ function displayMessage({username,message,id,deleted}, live=false){
     delBtn.onclick=()=>{
       channel.publish('message', JSON.stringify({id,deleted:true}));
       menu.style.display="none";
+      msgEl.innerHTML="<em>Message deleted</em>";
     };
     menu.appendChild(delBtn);
     options.onclick=()=>{menu.style.display=menu.style.display==='block'?"none":"block";};
     msgEl.appendChild(options);
     msgEl.appendChild(menu);
-  }
-
-  if(deleted){
-    msgEl.innerHTML="<em>Message deleted</em>";
   }
 
   chatDiv.appendChild(msgEl);
@@ -261,13 +261,14 @@ function displayMessage({username,message,id,deleted}, live=false){
   if(live && username !== currentUser.username){
     if(message.includes("@"+currentUser.username)){
       alert(`Mentioned: ${username}: ${message}`);
-    } else {
+    } else if(!deleted){
       alert(`New message from ${username}: ${message}`);
     }
-    newMessageSound.play();
+    if(!deleted) newMessageSound.play();
   }
 }
 
+// Load history
 function loadHistory(){
   loadingDiv.style.display="flex";
   channel.history({limit:200,direction:'forwards'}, (err,resultPage)=>{
