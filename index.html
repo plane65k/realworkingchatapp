@@ -3,335 +3,320 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Simple Chat — Full History</title>
+<title>Supabase Chat — Full History</title>
+
+<!-- Supabase JS -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js/dist/umd/supabase.min.js"></script>
+
 <style>
-  /* Clean Android/Google Chat-ish look */
-  body {
-    font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial;
-    margin: 0;
-    height: 100vh;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background: #f5f5f5;
-    color: #111;
+  /* Android / Google Chat-ish styling + smooth animation */
+  :root{
+    --bg:#f5f7f9;
+    --card:#fff;
+    --primary:#0b93f6;
+    --accent:#5cb85c;
+    --muted:#8a8f98;
+  }
+  html,body{height:100%;margin:0;font-family: "Google Sans", "Segoe UI", Roboto, Arial; background:var(--bg);}
+  .wrap{height:100vh; display:flex; align-items:center; justify-content:center; padding:18px;}
+  .chat-container{
+    width:96%; max-width:1100px; height:94vh; background:var(--card); border-radius:12px; box-shadow:0 8px 30px rgba(0,0,0,0.12);
+    display:flex; flex-direction:column; overflow:hidden;
   }
 
-  .chat-container {
-    width: 95%;
-    max-width: 1100px;
-    height: 90vh;
-    background: #fff;
-    border-radius: 12px;
-    box-shadow: 0 8px 30px rgba(0,0,0,0.12);
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
-
+  /* chat area */
   #chat {
-    flex: 1;
-    overflow-y: auto;
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    background: #ffffff;
+    flex:1; overflow:auto; padding:20px; display:flex; flex-direction:column; gap:12px;
+    scroll-behavior:smooth; background:linear-gradient(180deg,#fff,#fbfdff);
   }
 
-  .sidebar {
-    display:flex;
-    flex-direction:column;
-    padding:15px;
-    gap:10px;
-    border-top:1px solid #eee;
-    background:#fafafa;
+  /* message bubble */
+  .message{
+    max-width:72%; padding:10px 14px; border-radius:16px; position:relative; transition:transform .16s ease, opacity .2s ease;
+    box-shadow: 0 1px 0 rgba(0,0,0,0.04);
+    transform-origin: bottom;
+    opacity:1;
   }
+  .message.enter{ transform: translateY(8px); opacity:0; }
+  .message.show{ transform: translateY(0); opacity:1; }
 
-  /* message bubbles */
-  .message {
-    max-width: 72%;
-    padding: 10px 14px;
-    border-radius: 18px;
-    line-height: 1.35;
-    word-wrap: break-word;
-    position: relative;
-    font-size: 0.95rem;
-    box-shadow: 0 1px 0 rgba(0,0,0,0.02);
-  }
-  .message.left  { align-self: flex-start;  background: #f1f3f4; color: #111; border-bottom-left-radius: 4px; }
-  .message.right { align-self: flex-end;    background: #d9f0d9; color: #022; border-bottom-right-radius: 4px; }
-  .message .meta { font-size: 0.78rem; color: #666; margin-top: 6px; text-align: right; }
+  .left{ align-self:flex-start; background:#f1f3f5; color:#111; border-bottom-left-radius:6px; }
+  .right{ align-self:flex-end; background:#dcf8dc; color:#062; border-bottom-right-radius:6px; }
 
-  .message img { max-width: 320px; border-radius: 8px; display:block; margin-top:8px; }
-  .message a { color: #0b77d6; word-break: break-all; }
+  .meta { font-size:0.82rem; color:var(--muted); margin-top:8px; text-align:right; }
 
-  /* options (3-dot) */
-  .options {
-    position:absolute; top:6px; right:8px; cursor:pointer; color:#666; font-weight:600;
-  }
-  .options-menu {
-    position:absolute; top:28px; right:8px; display:none;
-    background:#fff; border:1px solid #ddd; border-radius:6px; box-shadow:0 6px 18px rgba(0,0,0,0.12); z-index:30;
-  }
-  .options-menu button { display:block; width:100%; padding:8px 12px; border:none; background:transparent; text-align:left; cursor:pointer; }
+  .message img{ max-width:320px; border-radius:8px; display:block; margin-top:8px; }
+
+  /* options menu */
+  .options{ position:absolute; top:6px; right:8px; cursor:pointer; color:#666; font-weight:700; user-select:none; }
+  .options-menu{ position:absolute; top:28px; right:6px; display:none; background:#fff; border:1px solid #eee; border-radius:6px; box-shadow:0 8px 22px rgba(0,0,0,0.12); z-index:40; }
+  .options-menu button{ display:block; padding:8px 12px; border:none; background:transparent; width:100%; text-align:left; cursor:pointer; }
   .options-menu button:hover{ background:#f6f6f6; }
 
-  input, textarea {
-    width:100%; padding:10px; border-radius:8px; border:1px solid #ccc; outline:none; font-size:0.95rem;
+  /* controls */
+  .controls{ display:flex; gap:10px; padding:14px; border-top:1px solid #eee; background:#fafafa; align-items:center; }
+  input[type=text], textarea{ width:100%; padding:12px; border-radius:10px; border:1px solid #ddd; outline:none; font-size:0.95rem; }
+  textarea{ resize:none; height:76px; }
+  button.primary{ padding:10px 14px; border-radius:10px; background:var(--primary); color:#fff; border:none; cursor:pointer; box-shadow:0 6px 18px rgba(11,147,246,0.12); }
+  button.positive{ background:var(--accent); }
+  button.ghost{ background:transparent; border:1px solid #ddd; color:#333; }
+
+  .left-col{ display:flex; gap:10px; align-items:center; width:320px; padding:12px; }
+  .small{ font-size:0.86rem; color:var(--muted); }
+
+  /* responsive */
+  @media (max-width:680px){
+    .chat-container{ height:100vh; border-radius:0; }
+    .left-col{ width:100%; padding:8px; }
   }
-  textarea { resize:none; height:80px; }
-  button.primary { padding:10px 16px; background:#0b93f6; color:white; border:none; border-radius:8px; cursor:pointer; }
-  button.positive { background:#5cb85c; color:white; border:none; padding:10px 16px; border-radius:8px; cursor:pointer; }
-  button.warn { background:#d9534f; color:white; border:none; padding:10px 16px; border-radius:8px; cursor:pointer; }
-
-  .overlay { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.5); z-index:1000; }
-  .pin-box { background:#fff; padding:28px; border-radius:10px; width:92%; max-width:360px; text-align:center; }
-  .pin-box input { text-align:center; font-size:1rem; padding:12px; border:1px solid #ddd; border-radius:8px; width:100%; margin-bottom:12px; }
-
-  .small { font-size:0.86rem; color:#666; }
 </style>
 </head>
 <body>
+<div class="wrap">
+  <div class="chat-container" role="application" aria-label="Chat">
+    <!-- chat feed -->
+    <div id="chat" role="log" aria-live="polite"></div>
 
-<!-- PIN overlay (one-time per device) -->
-<div class="overlay" id="pinOverlay">
-  <div class="pin-box">
-    <h2>Enter PIN</h2>
-    <input id="pinInput" type="password" placeholder="Enter PIN (5432)">
-    <div style="height:12px"></div>
-    <button id="pinBtn" class="positive">Continue</button>
-    <div style="height:10px"></div>
-    <div class="small">PIN is stored locally and only required once per device.</div>
-  </div>
-</div>
-
-<!-- Chat UI -->
-<div class="chat-container" id="chatApp" style="display:none;">
-  <div id="chat" aria-live="polite" role="log"></div>
-
-  <div class="sidebar">
-    <input id="username" type="text" placeholder="Enter username..." />
-    <textarea id="message" placeholder="Type a message or paste image URL..." disabled></textarea>
-    <div style="display:flex; gap:8px;">
+    <!-- controls / sidebar area -->
+    <div class="controls">
+      <div class="left-col">
+        <input id="username" type="text" placeholder="Display name (saved locally)" />
+      </div>
+      <textarea id="message" placeholder="Type a message or paste image URL..." disabled></textarea>
       <button id="send" class="positive" disabled>Send</button>
-      <button id="deleteLocalData" class="warn">Delete Local Data</button>
+      <button id="deleteLocalData" class="ghost">Delete Local Data</button>
     </div>
-    <div class="small">Tip: paste an image URL to embed the image. Click ⋮ on your message to delete it.</div>
   </div>
 </div>
 
+<!-- PIN overlay -->
+<div id="pinOverlay" style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.45);z-index:9999">
+  <div style="background:#fff;padding:26px;border-radius:10px;min-width:320px;max-width:92%;text-align:center">
+    <h3 style="margin:0 0 10px 0">Enter PIN</h3>
+    <input id="pinInput" type="password" placeholder="PIN (5432)" style="width:100%;padding:12px;border-radius:8px;border:1px solid #ddd;text-align:center">
+    <div style="height:12px"></div>
+    <button id="pinBtn" class="primary">Continue</button>
+    <div style="height:8px"></div>
+    <div class="small">PIN is stored locally and required once per device.</div>
+  </div>
+</div>
+
+<!-- tiny notification sound -->
 <audio id="newMessageSound" src="https://www.soundjay.com/button/sounds/button-3.mp3" preload="auto"></audio>
 
-<script src="https://cdn.ably.com/lib/ably.min-1.js"></script>
 <script>
-(async function(){
-  // ********** Config **********
-  const COMMON_PIN = '5432';
-  const ABLY_KEY = 'Vtd4-A.9jmIFA:umDML_i9STQP4BIH_u2Jon5BlkxuiK36w37FVrkhEl4';
-  const CHANNEL_NAME = 'chat';
+(async ()=> {
+  // ---------- config ----------
+  const SUPABASE_ANON_JWT = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indra3hpc3ZleWJwa2Vyb2dnZ29uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk1MzM1NjAsImV4cCI6MjA3NTEwOTU2MH0.70Yz5tSGaGMCy04BmzhoKrgwezx1c4Aw3RARnSsYu2w';
 
-  // ********** DOM **********
-  const pinOverlay = document.getElementById('pinOverlay');
-  const pinInput = document.getElementById('pinInput');
-  const pinBtn = document.getElementById('pinBtn');
+  // decode JWT payload to get "ref" claim (project ref)
+  function parseJwt (token) {
+    try {
+      const payload = token.split('.')[1];
+      const json = atob(payload.replace(/-/g,'+').replace(/_/g,'/'));
+      return JSON.parse(json);
+    } catch(e){
+      return null;
+    }
+  }
+  const payload = parseJwt(SUPABASE_ANON_JWT);
+  if(!payload || !payload.ref){
+    console.error('Could not parse Supabase ref from JWT. Ensure token contains "ref" claim.');
+  }
+  const SUPABASE_REF = payload && payload.ref ? payload.ref : prompt('Enter your Supabase project ref (e.g. abcdefgh):');
+  const SUPABASE_URL = `https://${SUPABASE_REF}.supabase.co`;
+  const SUPABASE_KEY = SUPABASE_ANON_JWT;
 
-  const chatApp = document.getElementById('chatApp');
+  // supabase client
+  const supabase = supabaseJs.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  // ---------- DOM ----------
   const chatDiv = document.getElementById('chat');
   const usernameInput = document.getElementById('username');
   const messageInput = document.getElementById('message');
   const sendBtn = document.getElementById('send');
   const deleteLocalDataBtn = document.getElementById('deleteLocalData');
   const newMsgSound = document.getElementById('newMessageSound');
+  const pinOverlay = document.getElementById('pinOverlay');
+  const pinInput = document.getElementById('pinInput');
+  const pinBtn = document.getElementById('pinBtn');
 
-  // ********** State **********
-  let ably = null;
-  let channel = null;
-  const seenIds = new Set(); // prevent duplicates
-  // utility to safely parse message data (history items may already be objects)
-  const parseData = d => {
-    if (typeof d === 'string') {
-      try { return JSON.parse(d); } catch(e){ return { message: d, timestamp: Date.now() }; }
-    }
-    return d || {};
-  };
+  // ---------- state ----------
+  const COMMON_PIN = '5432';
+  let myPin = localStorage.getItem('chatPin') || null;
+  let seenKeys = new Set(); // dedupe messages
+  let userSaved = localStorage.getItem('username') || '';
 
-  // ********** PIN Flow (one-time per device) **********
-  const storedPin = localStorage.getItem('chatPin');
-  if (storedPin === COMMON_PIN) {
+  // helper to create stable key for a row
+  const rowKey = (row) => (row.messageId ? String(row.messageId) : String(row.id || row.created_at || JSON.stringify(row)));
+
+  // escape
+  function escapeHtml(s){
+    if(!s) return '';
+    return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  // ---------- PIN flow ----------
+  if (localStorage.getItem('chatPin') === COMMON_PIN) {
     pinOverlay.style.display = 'none';
-    chatApp.style.display = 'flex';
-    const savedName = localStorage.getItem('username');
-    if (savedName) {
-      usernameInput.value = savedName;
-      messageInput.disabled = false;
-      sendBtn.disabled = false;
+    if(userSaved){
+      usernameInput.value = userSaved;
+      messageInput.disabled = false; sendBtn.disabled=false;
     }
-    // start ably connection immediately (no waiting)
-    await startAbly();
+    await start(); // start connection immediately
   } else {
     pinOverlay.style.display = 'flex';
   }
 
-  pinBtn.addEventListener('click', async () => {
-    const val = (pinInput.value || '').trim();
-    if (!val) return alert('Enter the PIN');
-    if (val === COMMON_PIN) {
+  pinBtn.addEventListener('click', async ()=>{
+    const val = (pinInput.value||'').trim();
+    if(!val) return alert('Enter PIN');
+    if(val === COMMON_PIN){
       localStorage.setItem('chatPin', COMMON_PIN);
+      myPin = COMMON_PIN;
       pinOverlay.style.display = 'none';
-      chatApp.style.display = 'flex';
-      const savedName = localStorage.getItem('username');
-      if (savedName) {
-        usernameInput.value = savedName;
-        messageInput.disabled = false;
-        sendBtn.disabled = false;
+      if(userSaved){
+        usernameInput.value = userSaved;
+        messageInput.disabled = false; sendBtn.disabled=false;
       }
-      await startAbly();
+      await start();
     } else {
       alert('Wrong PIN');
     }
   });
 
-  // ********** Start Ably and load full history **********
-  async function startAbly(){
-    if (ably) return;
-    ably = new Ably.Realtime(ABLY_KEY);
-    channel = ably.channels.get(CHANNEL_NAME);
+  // ---------- start: load all + subscribe ----------
+  async function start(){
+    // clear UI
+    chatDiv.innerHTML=''; seenKeys.clear();
 
-    // Subscribe to live events first so we don't miss messages while loading
-    channel.subscribe(handleRealtimeMessage);
-
-    // Load ALL history pages (forward = oldest -> newest)
-    await loadAllHistory();
-
-    // play a tiny notification on subscription new messages (handled in handler)
-  }
-
-  // loadAllHistory: page through history until done
-  async function loadAllHistory(){
+    // load all messages from Supabase table 'messages'
+    // select all columns; adjust if your column names differ (id, username, content OR message, created_at, user_pin)
+    // we assume SQL has columns: id, username, content, created_at, user_pin, messageId (optional)
     try {
-      // clear UI, reset seen set
-      // We clear to avoid duplicates from previous partial loads
-      // but we won't clear on each incremental load; we clear once before full history load
-      chatDiv.innerHTML = '';
-      seenIds.clear();
+      const { data, error } = await supabase
+        .from('messages')
+        .select('*')
+        .order('created_at', { ascending: true });
 
-      const params = { direction: 'forwards', limit: 100 };
-      let page = await channel.history(params);
+      if(error) throw error;
 
-      // iterate pages
-      while (page) {
-        // page.items is an array of Ably message objects (oldest-first for forwards)
-        for (const item of page.items) {
-          // item.data might be string or object
-          const data = parseData(item.data);
-          // choose a stable id for dedupe: prefer publisher messageId, then Ably server id
-          const key = (data && data.messageId) || item.id || `${data.timestamp||''}|${data.username||''}|${String(data.message||'')}`;
-          processHistoryMessage(item, data, key);
-        }
-        if (page.hasNext) {
-          page = await page.next();
-        } else break;
+      if(Array.isArray(data)){
+        data.forEach(row => {
+          // normalize: support both 'content' or 'message' column names
+          const normalized = {
+            id: row.id,
+            username: row.username || row.user_name || 'Anonymous',
+            message: row.content !== undefined ? row.content : (row.message || ''),
+            timestamp: row.created_at || row.createdAt || Date.now(),
+            messageId: row.messageId || row.id
+          };
+          renderRow(normalized, false);
+        });
       }
-    } catch (err) {
-      console.error('Error loading history', err);
-      // show partial content if any
+    } catch(err){
+      console.error('Error loading messages:', err);
+    }
+
+    // subscribe realtime to inserts and deletes
+    // use Postgres changes subscription (works in supabase-js v2)
+    // we'll do both INSERT and DELETE
+    try {
+      const subscription = supabase.channel('public:messages')
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
+          const row = payload.new;
+          const normalized = {
+            id: row.id,
+            username: row.username || 'Anonymous',
+            message: row.content !== undefined ? row.content : (row.message || ''),
+            timestamp: row.created_at || Date.now(),
+            messageId: row.messageId || row.id
+          };
+          renderRow(normalized, true);
+        })
+        .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'messages' }, payload => {
+          const old = payload.old;
+          const idKey = old.messageId || old.id;
+          // mark deleted in UI
+          const el = chatDiv.querySelector(`[data-id="${idKey}"]`);
+          if(el) el.innerHTML = `<em style="color:#666">Message deleted</em>`;
+          seenKeys.add(String(idKey));
+        })
+        .subscribe();
+
+      // optional: handle presence / errors via subscription
+    } catch(e){
+      console.error('Realtime subscribe error', e);
     }
   }
 
-  // process history item (keeps ordering)
-  function processHistoryMessage(item, data, key) {
-    // handle deletion events: message payload might be { messageId, deleted:true }
-    if (data && data.deleted && data.messageId) {
-      // mark deleted: find element (by dataset) and replace content
-      const el = chatDiv.querySelector(`[data-id="${data.messageId}"]`);
-      if (el) {
-        el.innerHTML = `<em style="color:#666">Message deleted</em>`;
-      }
-      // still mark seen (so we don't re-render deletion later)
-      seenIds.add(data.messageId);
-      return;
-    }
+  // ---------- render a row (dedupe + animation) ----------
+  function renderRow(row, isRealtime=true){
+    const key = rowKey(row);
+    if(seenKeys.has(String(key))) return;
+    seenKeys.add(String(key));
 
-    // if normal message and not seen -> render
-    if (!seenIds.has(key)) {
-      seenIds.add(key);
-      // Use the publisher messageId if exists, else Ably item.id (persisted id)
-      const domId = (data && data.messageId) || item.id || key;
-      displayMessage(data, domId);
-    }
-  }
-
-  // Realtime message handler (new publishes)
-  function handleRealtimeMessage(msg) {
-    // msg is Ably Message object for realtime events
-    const data = parseData(msg.data);
-    // decide id
-    const key = (data && data.messageId) || msg.id || `${data.timestamp||''}|${data.username||''}|${String(data.message||'')}`;
-    // If it's a deletion signal
-    if (data && data.deleted && data.messageId) {
-      // apply deletion immediately
-      const el = chatDiv.querySelector(`[data-id="${data.messageId}"]`);
-      if (el) el.innerHTML = `<em style="color:#666">Message deleted</em>`;
-      // ensure we don't later double-add original
-      seenIds.add(data.messageId);
-      return;
-    }
-    // dedupe and render
-    if (!seenIds.has(key)) {
-      seenIds.add(key);
-      const domId = (data && data.messageId) || msg.id || key;
-      displayMessage(data, domId, true);
-    }
-  }
-
-  // Display message in UI
-  function displayMessage(data, domId, isRealtime=false) {
-    // data should include: username, message, timestamp
-    const currentUser = localStorage.getItem('username') || '';
-    const isMine = (data && data.username) === currentUser;
+    const currentName = localStorage.getItem('username') || usernameInput.value || '';
+    const isMine = (row.username === currentName);
 
     const el = document.createElement('div');
     el.className = 'message ' + (isMine ? 'right' : 'left');
-    el.dataset.id = domId;
+    el.dataset.id = row.messageId || row.id;
 
-    // render content (image detection / links)
-    let content = '';
-    const msgText = (data && data.message) || '';
-    if (typeof msgText === 'string' && msgText.match(/^https?:\/\/.*\.(jpg|jpeg|png|gif|webp)$/i)) {
-      content = `<img src="${escapeHtml(msgText)}" alt="image">`;
-    } else if (typeof msgText === 'string' && msgText.match(/^https?:\/\//i)) {
-      content = `<a href="${escapeHtml(msgText)}" target="_blank" rel="noopener">${escapeHtml(msgText)}</a>`;
+    // content
+    let contentHtml = '';
+    if(typeof row.message === 'string' && row.message.match(/^https?:\/\/.*\.(jpg|jpeg|png|gif|webp)$/i)){
+      contentHtml = `<img src="${escapeHtml(row.message)}" alt="image">`;
+    } else if(typeof row.message === 'string' && row.message.match(/^https?:\/\//i)){
+      contentHtml = `<a href="${escapeHtml(row.message)}" target="_blank" rel="noopener">${escapeHtml(row.message)}</a>`;
     } else {
-      content = `<div>${escapeHtml(msgText)}</div>`;
+      contentHtml = `<div>${escapeHtml(row.message)}</div>`;
     }
 
-    const ts = data && data.timestamp ? new Date(data.timestamp).toLocaleTimeString() : '';
+    const ts = row.timestamp ? new Date(row.timestamp).toLocaleTimeString() : '';
 
-    // base inner HTML
-    el.innerHTML = `<div><strong>${escapeHtml(data.username || 'Anonymous')}</strong><div style="margin-top:6px">${content}</div></div>
+    el.innerHTML = `<div><strong>${escapeHtml(row.username || 'Anonymous')}</strong><div style="margin-top:8px">${contentHtml}</div></div>
                     <div class="meta"><span class="timestamp">${ts}</span></div>`;
 
-    // add options for own messages
-    if (isMine) {
+    // options for own messages
+    if(isMine){
       const opts = document.createElement('div');
       opts.className = 'options';
       opts.textContent = '⋮';
 
       const menu = document.createElement('div');
       menu.className = 'options-menu';
-      const delBtn = document.createElement('button');
-      delBtn.textContent = 'Delete message';
-      delBtn.onclick = () => {
-        // publish a deletion event
-        const targetId = (data && data.messageId) || domId;
-        channel.publish('message', JSON.stringify({ messageId: targetId, deleted: true, timestamp: Date.now() }));
-        // locally mark deleted immediately for snappy UX
-        const node = chatDiv.querySelector(`[data-id="${targetId}"]`);
-        if (node) node.innerHTML = `<em style="color:#666">Message deleted</em>`;
+      const btnDelete = document.createElement('button');
+      btnDelete.textContent = 'Delete';
+      btnDelete.onclick = async (ev) => {
+        ev.stopPropagation();
+        const targetId = row.messageId || row.id;
+        // try delete via Supabase where id/messageId matches and user_pin equals local pin
+        const pinStored = localStorage.getItem('chatPinValue') || localStorage.getItem('chatPin') || null;
+        // We store user_pin in table column; if not present you'll need server-side logic; still attempt
+        try {
+          // try delete by id if numeric
+          const match = {};
+          if(row.id) match.id = row.id;
+          // delete only if user_pin matches (if you stored it)
+          if(pinStored) match.user_pin = pinStored;
+          const { error } = await supabase.from('messages').delete().match(match);
+          if(error){
+            // fallback: try delete by id only (if RLS allows)
+            const { error: err2 } = await supabase.from('messages').delete().match({ id: row.id });
+            if(err2) throw err2;
+          }
+        } catch(err){
+          console.error('Delete failed', err);
+          alert('Delete failed (check RLS & user_pin).');
+          return;
+        }
+        // optimistic update
+        const elNode = chatDiv.querySelector(`[data-id="${targetId}"]`);
+        if(elNode) elNode.innerHTML = `<em style="color:#666">Message deleted</em>`;
         menu.style.display = 'none';
       };
-      menu.appendChild(delBtn);
+      menu.appendChild(btnDelete);
 
       opts.onclick = (ev) => {
         ev.stopPropagation();
@@ -342,68 +327,70 @@
       el.appendChild(menu);
     }
 
-    // append to chat
+    // animation: start hidden then show
+    el.classList.add('enter');
     chatDiv.appendChild(el);
-
-    // if realtime and not visible at bottom, we still scroll to bottom for now
+    // force layout then show
+    requestAnimationFrame(()=> {
+      el.classList.add('show');
+      el.classList.remove('enter');
+    });
+    // scroll to bottom
     chatDiv.scrollTop = chatDiv.scrollHeight;
-
-    // play sound for realtime messages not sent by me
-    if (isRealtime && !isMine) {
-      try { newMsgSound.play(); } catch(e) {}
-    }
   }
 
-  // escape helper
-  function escapeHtml(s) {
-    if (!s) return '';
-    return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  }
-
-  // ********** Sending messages **********
-  sendBtn.addEventListener('click', publishMessage);
-  messageInput.addEventListener('keypress', e => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+  // ---------- sending ----------
+  sendBtn.addEventListener('click', publish);
+  messageInput.addEventListener('keydown', e=>{
+    if(e.key === 'Enter' && !e.shiftKey){
       e.preventDefault();
-      publishMessage();
+      publish();
     }
   });
 
-  function publishMessage(){
+  async function publish(){
     const name = (usernameInput.value || '').trim();
     const txt = (messageInput.value || '').trim();
-    if (!name || !txt) return alert('Please set a username and type a message.');
-    // persist username locally
+    if(!name || !txt) return alert('Add display name and message');
+    // save name locally
     localStorage.setItem('username', name);
-    // always include a messageId so deletions work across devices
-    const messageId = `${Date.now()}-${Math.random().toString(36).slice(2,9)}`;
-    const payload = { username: name, message: txt, timestamp: Date.now(), messageId };
-    channel.publish('message', JSON.stringify(payload));
-    messageInput.value = '';
+
+    // attach pin value (user may want to store a device-level PIN for deletes)
+    // store a separate pin value used to match deletion if desired
+    const pinVal = localStorage.getItem('chatPinValue') || localStorage.getItem('chatPin') || COMMON_PIN;
+    // attempt to write message: we write content in 'content' column
+    const payload = {
+      username: name,
+      content: txt,
+      created_at: new Date().toISOString(),
+      user_pin: pinVal,
+      // messageId helps cross-client deletion; include a unique token
+      messageId: `${Date.now()}-${Math.random().toString(36).slice(2,9)}`
+    };
+    try {
+      const { error } = await supabase.from('messages').insert(payload);
+      if(error) throw error;
+      messageInput.value = '';
+    } catch(err){
+      console.error('Insert error', err);
+      alert('Failed to send message.');
+    }
   }
 
-  // enable message input when username entered
-  usernameInput.addEventListener('change', () => {
-    const nm = (usernameInput.value || '').trim();
-    if (nm) {
-      localStorage.setItem('username', nm);
-      messageInput.disabled = false;
-      sendBtn.disabled = false;
-    }
-  });
-
-  // delete local data
+  // ---------- local data delete ----------
   deleteLocalDataBtn.addEventListener('click', () => {
     localStorage.removeItem('chatPin');
+    localStorage.removeItem('chatPinValue');
     localStorage.removeItem('username');
-    alert('Local data cleared. Refresh to re-enter PIN and username.');
-    pinOverlay.style.display = 'flex';
-    chatApp.style.display = 'none';
+    alert('Local data removed. Refresh to re-enter PIN/username.');
+    location.reload();
   });
 
-  // show/hide chat app after starting Ably handled above in PIN flow
-  // if not started yet (user already had PIN but ably not started) ensure started
-  // startAbly already invoked earlier if PIN present
+  // enable inputs if username saved
+  if(localStorage.getItem('username')){
+    usernameInput.value = localStorage.getItem('username');
+    messageInput.disabled = false; sendBtn.disabled = false;
+  }
 
 })(); // end IIFE
 </script>
