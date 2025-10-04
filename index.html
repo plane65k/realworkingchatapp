@@ -123,6 +123,42 @@
     .pin-box button {
       padding: 10px 18px; border-radius: 8px; border: none; background: #5cb85c; color: #fff; cursor: pointer;
     }
+
+    /* 3-dot menu */
+    .options {
+      position: absolute;
+      top: 5px;
+      right: 8px;
+      cursor: pointer;
+      font-weight: bold;
+      color: #555;
+    }
+
+    .options-menu {
+      position: absolute;
+      top: 20px;
+      right: 8px;
+      background: #fff;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+      display: none;
+      z-index: 10;
+    }
+
+    .options-menu button {
+      background: none;
+      color: #000;
+      border: none;
+      padding: 6px 12px;
+      text-align: left;
+      width: 100%;
+      cursor: pointer;
+    }
+
+    .options-menu button:hover {
+      background: #f0f0f0;
+    }
   </style>
 </head>
 <body>
@@ -200,10 +236,17 @@
   });
 
   // Render message in Google Chat style
-  function displayMessage({ username, message, timestamp }) {
+  function displayMessage({ username, message, timestamp, messageId, deleted }) {
+    if (deleted) {
+      const msgEl = document.querySelector(`[data-id="${messageId}"]`);
+      if (msgEl) msgEl.innerHTML = "<em>Message deleted</em>";
+      return;
+    }
+
     const currentUser = localStorage.getItem('username');
     const msgEl = document.createElement('div');
     msgEl.className = 'message ' + (username === currentUser ? 'right' : 'left');
+    msgEl.dataset.id = messageId;
 
     let content = message;
     if (message.match(/^https?:\/\/.*\.(jpg|jpeg|png|gif|webp)$/i)) {
@@ -215,6 +258,30 @@
     msgEl.innerHTML = `<div><strong>${username}</strong><br>${content}</div>
                        <div class="timestamp">${new Date(timestamp).toLocaleTimeString()}</div>`;
 
+    // If it's my message → add 3-dot menu
+    if (username === currentUser) {
+      const options = document.createElement('div');
+      options.className = 'options';
+      options.textContent = "⋮";
+
+      const menu = document.createElement('div');
+      menu.className = 'options-menu';
+      const delBtn = document.createElement('button');
+      delBtn.textContent = "Delete";
+      delBtn.onclick = () => {
+        deleteMessage(messageId);
+        menu.style.display = "none";
+      };
+      menu.appendChild(delBtn);
+
+      options.onclick = () => {
+        menu.style.display = (menu.style.display === "block") ? "none" : "block";
+      };
+
+      msgEl.appendChild(options);
+      msgEl.appendChild(menu);
+    }
+
     chatDiv.appendChild(msgEl);
     chatDiv.scrollTop = chatDiv.scrollHeight;
   }
@@ -223,7 +290,7 @@
   function loadHistory() {
     channel.history({ limit: 200, direction: 'forwards' }, (err, resultPage) => {
       if (err) { console.error(err); return; }
-      chatDiv.innerHTML = ""; // clear before re-render
+      chatDiv.innerHTML = "";
       resultPage.items.reverse().forEach(item => {
         displayMessage(JSON.parse(item.data));
       });
@@ -244,9 +311,15 @@
     const name = usernameInput.value.trim();
     const msg = messageInput.value.trim();
     if (!name || !msg) return;
-    const data = { username: name, message: msg, timestamp: Date.now() };
+    const data = { username: name, message: msg, timestamp: Date.now(), messageId: Date.now() + "-" + Math.random() };
     channel.publish('message', JSON.stringify(data));
     messageInput.value = '';
+  }
+
+  // Delete
+  function deleteMessage(messageId) {
+    const data = { messageId, deleted: true };
+    channel.publish('message', JSON.stringify(data));
   }
 
   sendBtn.addEventListener('click', sendMessage);
