@@ -241,12 +241,15 @@ const newMessageSound = document.getElementById('newMessageSound');
 const loadingDiv = document.getElementById('loading');
 
 let currentUser = null;
+let messages = [];
 
 // Remember user
 if(localStorage.getItem("chatUser")){
   currentUser = JSON.parse(localStorage.getItem("chatUser"));
   pinOverlay.style.display = "none";
   chatApp.style.display = "flex";
+  messages = JSON.parse(localStorage.getItem("chatMessages") || "[]");
+  messages.forEach(displayMessage);
   loadHistory();
 }
 
@@ -260,9 +263,12 @@ pinBtn.addEventListener('click', ()=>{
   localStorage.setItem("chatUser", JSON.stringify(currentUser));
   pinOverlay.style.display="none";
   chatApp.style.display="flex";
+  messages = JSON.parse(localStorage.getItem("chatMessages") || "[]");
+  messages.forEach(displayMessage);
   loadHistory();
 });
 
+// Display message
 function displayMessage({username, message, id, deleted}, live=false){
   const div = document.querySelector(`[data-id="${id}"]`);
   if(deleted && div){ div.innerHTML="<em>Message deleted</em>"; return; }
@@ -289,8 +295,11 @@ function displayMessage({username, message, id, deleted}, live=false){
     const delBtn = document.createElement('button');
     delBtn.textContent = "Delete";
     delBtn.onclick = () => {
+      const msgObj = messages.find(m=>m.id===id);
+      if(msgObj){ msgObj.deleted=true; localStorage.setItem("chatMessages", JSON.stringify(messages)); }
       channel.publish('message', JSON.stringify({id, deleted:true}));
       menu.style.display="none";
+      displayMessage({id, deleted:true});
     };
     menu.appendChild(delBtn);
     options.onclick = ()=>{menu.style.display = menu.style.display==='block'?"none":"block";};
@@ -301,7 +310,6 @@ function displayMessage({username, message, id, deleted}, live=false){
   chatDiv.appendChild(msgEl);
   chatDiv.scrollTop = chatDiv.scrollHeight;
 
-  // Live message alert logic
   if(live && username !== currentUser.username){
     if(message.includes("@"+currentUser.username)){
       alert(`Mentioned: ${username}: ${message}`);
@@ -312,20 +320,31 @@ function displayMessage({username, message, id, deleted}, live=false){
   }
 }
 
+// Load history
 function loadHistory(){
   loadingDiv.style.display = "flex";
   channel.history({limit:200,direction:'forwards'}, (err, resultPage)=>{
     loadingDiv.style.display = "none";
     if(err) return console.error(err);
     resultPage.items.forEach(item=>{
-      displayMessage(JSON.parse(item.data), false);
+      const data = JSON.parse(item.data);
+      if(!messages.find(m=>m.id===data.id)){
+        messages.push(data);
+        localStorage.setItem("chatMessages", JSON.stringify(messages));
+        displayMessage(data, false);
+      }
     });
   });
 }
 
 // Subscribe live
 channel.subscribe('message', msg=>{
-  displayMessage(JSON.parse(msg.data), true);
+  const data = JSON.parse(msg.data);
+  if(!messages.find(m=>m.id===data.id)){
+    messages.push(data);
+    localStorage.setItem("chatMessages", JSON.stringify(messages));
+    displayMessage(data, true);
+  }
 });
 
 // Send message
@@ -334,6 +353,9 @@ sendBtn.addEventListener('click', ()=>{
   if(!msg || !currentUser) return;
   const id = Date.now() + '-' + Math.random();
   const data = {id, username: currentUser.username, message: msg};
+  messages.push(data);
+  localStorage.setItem("chatMessages", JSON.stringify(messages));
+  displayMessage(data, true);
   channel.publish('message', JSON.stringify(data));
   messageInput.value='';
 });
