@@ -149,6 +149,12 @@ footer button {
   animation: spin 1s linear infinite;
 }
 @keyframes spin { 0% { transform: rotate(0deg);} 100% { transform: rotate(360deg);} }
+
+.timestamp {
+  font-size:10px;
+  color:#666;
+  margin-top:2px;
+}
 </style>
 </head>
 <body>
@@ -195,12 +201,17 @@ const loadingDiv = document.getElementById('loading');
 
 let currentUser = null;
 let displayedMessages = new Set();
+let messages = []; // stored messages
 
-// Remember user
+// Load user & messages from localStorage
 if(localStorage.getItem("chatUser")){
   currentUser = JSON.parse(localStorage.getItem("chatUser"));
   pinOverlay.style.display = "none";
   chatApp.style.display = "flex";
+  if(localStorage.getItem("chatMessages")){
+    messages = JSON.parse(localStorage.getItem("chatMessages"));
+    messages.forEach(msg=>displayMessage(msg,false));
+  }
   loadHistory();
 }
 
@@ -213,10 +224,14 @@ pinBtn.addEventListener('click', ()=>{
   localStorage.setItem("chatUser", JSON.stringify(currentUser));
   pinOverlay.style.display="none";
   chatApp.style.display="flex";
+  if(localStorage.getItem("chatMessages")){
+    messages = JSON.parse(localStorage.getItem("chatMessages"));
+    messages.forEach(msg=>displayMessage(msg,false));
+  }
   loadHistory();
 });
 
-function displayMessage({username,message,id,deleted}, live=false){
+function displayMessage({username,message,id,deleted,timestamp}, live=false){
   if(displayedMessages.has(id)) return;
   displayedMessages.add(id);
 
@@ -225,17 +240,15 @@ function displayMessage({username,message,id,deleted}, live=false){
   msgEl.dataset.id = id;
 
   let content = deleted ? "<em>Message deleted</em>" : message;
-
-  if(!deleted){
-    if(message.match(/^https?:\/\/.*\.(jpg|jpeg|png|gif|webp)$/i)){
-      content = `<img src="${message}">`;
-    } else if(message.match(/^https?:\/\//i)){
-      content = `<a href="${message}" target="_blank">${message}</a>`;
-    }
+  if(!deleted && message.match(/^https?:\/\/.*\.(jpg|jpeg|png|gif|webp)$/i)){
+    content = `<img src="${message}">`;
+  } else if(!deleted && message.match(/^https?:\/\//i)){
+    content = `<a href="${message}" target="_blank">${message}</a>`;
   }
 
-  msgEl.innerHTML = `<div>${username}: ${content}</div>`;
+  msgEl.innerHTML = `<div>${username}: ${content}</div><div class="timestamp">${timestamp}</div>`;
 
+  // Delete option
   if(username===currentUser.username && !deleted){
     const options = document.createElement('div');
     options.className='options';
@@ -245,9 +258,14 @@ function displayMessage({username,message,id,deleted}, live=false){
     const delBtn=document.createElement('button');
     delBtn.textContent="Delete";
     delBtn.onclick=()=>{
-      channel.publish('message', JSON.stringify({id,deleted:true}));
+      const msgIndex = messages.findIndex(m=>m.id===id);
+      messages[msgIndex].deleted = true;
+      saveMessages();
+      channel.publish('message', JSON.stringify(messages[msgIndex]));
       menu.style.display="none";
-      msgEl.innerHTML="<em>Message deleted</em>";
+      chatDiv.innerHTML="";
+      displayedMessages.clear();
+      messages.forEach(m=>displayMessage(m,false));
     };
     menu.appendChild(delBtn);
     options.onclick=()=>{menu.style.display=menu.style.display==='block'?"none":"block";};
@@ -258,41 +276,66 @@ function displayMessage({username,message,id,deleted}, live=false){
   chatDiv.appendChild(msgEl);
   chatDiv.scrollTop = chatDiv.scrollHeight;
 
-  if(live && username !== currentUser.username){
+  if(live && username!==currentUser.username && !deleted){
     if(message.includes("@"+currentUser.username)){
       alert(`Mentioned: ${username}: ${message}`);
-    } else if(!deleted){
+    } else {
       alert(`New message from ${username}: ${message}`);
     }
-    if(!deleted) newMessageSound.play();
+    newMessageSound.play();
   }
 }
 
-// Load history
+// Save to localStorage
+function saveMessages(){
+  localStorage.setItem("chatMessages", JSON.stringify(messages));
+}
+
+// Load history from Ably
 function loadHistory(){
   loadingDiv.style.display="flex";
   channel.history({limit:200,direction:'forwards'}, (err,resultPage)=>{
     loadingDiv.style.display="none";
     if(err) return console.error(err);
     resultPage.items.forEach(item=>{
-      displayMessage(JSON.parse(item.data), false);
+      const msg = JSON.parse(item.data);
+      if(!messages.some(m=>m.id===msg.id)){
+        messages.push(msg);
+        displayMessage(msg,false);
+      }
     });
+    saveMessages();
   });
 }
 
-// Subscribe live messages
+// Live subscription
 channel.subscribe('message', msg=>{
-  displayMessage(JSON.parse(msg.data), true);
+  const data = JSON.parse(msg.data);
+  if(!messages.some(m=>m.id===data.id)){
+    messages.push(data);
+    displayMessage(data,true);
+    saveMessages();
+  } else {
+    const idx = messages.findIndex(m=>m.id===data.id);
+    messages[idx] = data;
+    chatDiv.innerHTML="";
+    displayedMessages.clear();
+    messages.forEach(m=>displayMessage(m,false));
+  }
 });
 
 // Send message
 sendBtn.addEventListener('click', ()=>{
-  const msg = messageInput.value.trim();
-  if(!msg || !currentUser) return;
-  const id = Date.now() + '-' + Math.random();
-  const data = {id, username:currentUser.username, message:msg};
-  channel.publish('message', JSON.stringify(data));
-  messageInput.value='';
+  const msgText = messageInput.value.trim();
+  if(!msgText || !currentUser) return;
+  const id = Date.now() + "-" + Math.random();
+  const timestamp = new Date().toLocaleTimeString();
+  const msgObj = {id, username:currentUser.username, message:msgText, timestamp, deleted:false};
+  messages.push(msgObj);
+  displayMessage(msgObj,false);
+  saveMessages();
+  channel.publish('message', JSON.stringify(msgObj));
+  messageInput.value="";
 });
 
 messageInput.addEventListener('keypress', e=>{
