@@ -8,7 +8,7 @@
 body {
   margin: 0;
   font-family: "Roboto", sans-serif;
-  background: #f5f5f5;
+  background: #f0f0f0;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -16,15 +16,15 @@ body {
 }
 
 .chat-container {
-  width: 100%;
-  max-width: 500px;
+  width: 90%;
+  max-width: 800px;
   height: 90vh;
   display: flex;
   flex-direction: column;
   background: #ffffff;
-  border-radius: 16px;
+  border-radius: 20px;
   overflow: hidden;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+  box-shadow: 0 8px 30px rgba(0,0,0,0.2);
 }
 
 /* Chat messages */
@@ -40,7 +40,7 @@ body {
 
 .message {
   max-width: 70%;
-  padding: 12px 16px;
+  padding: 14px 18px;
   border-radius: 16px;
   font-size: 15px;
   line-height: 1.4;
@@ -57,7 +57,7 @@ body {
 
 .message.otherMessage {
   align-self: flex-start;
-  background: #fff;
+  background: #ffffff;
   border-bottom-left-radius: 4px;
 }
 
@@ -156,16 +156,16 @@ footer button {
 .pin-box {
   background: white;
   padding: 30px;
-  border-radius: 16px;
+  border-radius: 20px;
   text-align: center;
   width: 90%;
-  max-width: 300px;
+  max-width: 350px;
 }
 
 .pin-box input {
   width: 100%;
-  padding: 12px;
-  border-radius: 12px;
+  padding: 14px;
+  border-radius: 14px;
   border: 1px solid #ccc;
   margin-bottom: 15px;
   font-size: 16px;
@@ -194,6 +194,7 @@ footer button {
 <div class="overlay" id="pinOverlay">
   <div class="pin-box">
     <h2>Enter PIN</h2>
+    <input type="text" id="usernameInput" placeholder="Enter username">
     <input type="password" id="pinInput" placeholder="Enter PIN">
     <button id="pinBtn">Continue</button>
   </div>
@@ -215,6 +216,7 @@ const ably = new Ably.Realtime('Vtd4-A.9jmIFA:umDML_i9STQP4BIH_u2Jon5BlkxuiK36w3
 const channel = ably.channels.get('chat');
 
 const pinOverlay = document.getElementById('pinOverlay');
+const usernameInput = document.getElementById('usernameInput');
 const pinInput = document.getElementById('pinInput');
 const pinBtn = document.getElementById('pinBtn');
 const chatApp = document.getElementById('chatApp');
@@ -225,13 +227,25 @@ const newMessageSound = document.getElementById('newMessageSound');
 
 let currentUser = null;
 
-// PIN check
+// Check local storage for remembered user
+if(localStorage.getItem("chatUser")){
+  currentUser = JSON.parse(localStorage.getItem("chatUser"));
+  pinOverlay.style.display = "none";
+  chatApp.style.display = "flex";
+  loadHistory();
+}
+
+// PIN overlay login
 pinBtn.addEventListener('click', () => {
-  if(pinInput.value.trim() === PIN_CODE){
-    pinOverlay.style.display = 'none';
-    chatApp.style.display = 'flex';
-    currentUser = prompt("Enter your username:") || "Anonymous";
-  } else alert("Wrong PIN");
+  const username = usernameInput.value.trim();
+  const pin = pinInput.value.trim();
+  if(!username) return;
+  if(pin !== PIN_CODE) return;
+  currentUser = {username};
+  localStorage.setItem("chatUser", JSON.stringify(currentUser));
+  pinOverlay.style.display = "none";
+  chatApp.style.display = "flex";
+  loadHistory();
 });
 
 // Display message
@@ -241,8 +255,9 @@ function displayMessage({username, message, id, deleted}){
     div.innerHTML = "<em>Message deleted</em>";
     return;
   }
+
   const msgEl = document.createElement('div');
-  msgEl.className = "message " + (username===currentUser ? "myMessage":"otherMessage");
+  msgEl.className = "message " + (username===currentUser.username ? "myMessage":"otherMessage");
   msgEl.dataset.id = id;
 
   let content = message;
@@ -254,7 +269,7 @@ function displayMessage({username, message, id, deleted}){
 
   msgEl.innerHTML = `<div>${username}: ${content}</div>`;
 
-  if(username===currentUser){
+  if(username===currentUser.username){
     const options = document.createElement('div');
     options.className = 'options';
     options.textContent = '⋮';
@@ -262,7 +277,10 @@ function displayMessage({username, message, id, deleted}){
     menu.className = 'options-menu';
     const delBtn = document.createElement('button');
     delBtn.textContent = "Delete";
-    delBtn.onclick = () => { channel.publish('message', JSON.stringify({id, deleted:true})); menu.style.display="none"; };
+    delBtn.onclick = () => { 
+      channel.publish('message', JSON.stringify({id, deleted:true})); 
+      menu.style.display="none"; 
+    };
     menu.appendChild(delBtn);
     options.onclick = () => { menu.style.display = menu.style.display==='block'?"none":"block"; };
     msgEl.appendChild(options);
@@ -274,10 +292,12 @@ function displayMessage({username, message, id, deleted}){
 }
 
 // Load history
-channel.history({limit: 100, direction:'forwards'}, (err, resultPage) => {
-  if(err) return console.error(err);
-  resultPage.items.forEach(item => displayMessage(JSON.parse(item.data)));
-});
+function loadHistory(){
+  channel.history({limit: 200, direction:'forwards'}, (err, resultPage) => {
+    if(err) return console.error(err);
+    resultPage.items.forEach(item => displayMessage(JSON.parse(item.data)));
+  });
+}
 
 // Subscribe to live updates
 channel.subscribe('message', msg => displayMessage(JSON.parse(msg.data)));
@@ -287,7 +307,7 @@ sendBtn.addEventListener('click', () => {
   const msg = messageInput.value.trim();
   if(!msg || !currentUser) return;
   const id = Date.now() + '-' + Math.random();
-  const data = {id, username: currentUser, message: msg};
+  const data = {id, username: currentUser.username, message: msg};
   channel.publish('message', JSON.stringify(data));
   messageInput.value = '';
 });
