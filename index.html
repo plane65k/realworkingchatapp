@@ -1,278 +1,248 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Chat App</title>
-  <style>
-    body {
-      margin: 0;
-      font-family: "Roboto", sans-serif;
-      background: #f5f5f5;
-      display: flex;
-      flex-direction: column;
-      height: 100vh;
-    }
-
-    /* Login / PIN screen */
-    #loginScreen {
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      flex: 1;
-      background: linear-gradient(135deg, #4caf50, #2e7d32);
-      color: white;
-      animation: fadeIn 0.6s ease;
-    }
-    #loginScreen input {
-      padding: 12px;
-      border: none;
-      border-radius: 12px;
-      margin: 10px;
-      width: 240px;
-      font-size: 16px;
-    }
-    #loginScreen button {
-      background: white;
-      color: #2e7d32;
-      border: none;
-      padding: 12px 20px;
-      border-radius: 20px;
-      cursor: pointer;
-      font-weight: bold;
-      transition: background 0.2s;
-    }
-    #loginScreen button:hover {
-      background: #c8e6c9;
-    }
-
-    /* Chat screen */
-    #chatScreen {
-      display: none;
-      flex-direction: column;
-      height: 100%;
-    }
-    header {
-      background: #2e7d32;
-      color: white;
-      padding: 15px;
-      font-size: 18px;
-      font-weight: bold;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-    }
-    #messages {
-      flex: 1;
-      overflow-y: auto;
-      padding: 15px;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      background: #fafafa;
-    }
-    .message {
-      max-width: 70%;
-      padding: 12px 15px;
-      border-radius: 18px;
-      font-size: 15px;
-      animation: slideUp 0.25s ease;
-      position: relative;
-      word-wrap: break-word;
-    }
-    .myMessage {
-      align-self: flex-end;
-      background: #4caf50;
-      color: white;
-      border-bottom-right-radius: 4px;
-    }
-    .otherMessage {
-      align-self: flex-start;
-      background: #e0e0e0;
-      color: black;
-      border-bottom-left-radius: 4px;
-    }
-    .message .menu {
-      position: absolute;
-      top: 6px;
-      right: 8px;
-      cursor: pointer;
-      font-size: 14px;
-      color: rgba(255,255,255,0.7);
-    }
-    .otherMessage .menu {
-      color: rgba(0,0,0,0.5);
-    }
-    .deleteBtn {
-      background: transparent;
-      border: none;
-      color: red;
-      cursor: pointer;
-      font-size: 13px;
-      margin-top: 4px;
-      display: none;
-    }
-    .message.showDelete .deleteBtn {
-      display: block;
-    }
-    footer {
-      display: flex;
-      padding: 12px;
-      background: #fff;
-      border-top: 1px solid #ddd;
-    }
-    footer input {
-      flex: 1;
-      padding: 12px;
-      border-radius: 24px;
-      border: 1px solid #ccc;
-      margin-right: 10px;
-      outline: none;
-      font-size: 15px;
-    }
-    footer button {
-      background: #4caf50;
-      border: none;
-      border-radius: 50%;
-      width: 48px;
-      height: 48px;
-      color: white;
-      font-size: 20px;
-      cursor: pointer;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      transition: background 0.2s;
-    }
-    footer button:hover {
-      background: #43a047;
-    }
-
-    @keyframes fadeIn {
-      from {opacity:0;}
-      to {opacity:1;}
-    }
-    @keyframes slideUp {
-      from {opacity:0; transform: translateY(10px);}
-      to {opacity:1; transform: translateY(0);}
-    }
-  </style>
+<meta charset="UTF-8">
+<title>Chat App</title>
+<style>
+body {
+  margin: 0;
+  font-family: "Roboto", sans-serif;
+  background: #f5f5f5;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+#loginScreen {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  flex: 1;
+  background: linear-gradient(135deg, #4caf50, #2e7d32);
+  color: white;
+}
+#loginScreen input {
+  padding: 12px;
+  border: none;
+  border-radius: 12px;
+  margin: 10px;
+  width: 240px;
+  font-size: 16px;
+}
+#loginScreen button {
+  background: white;
+  color: #2e7d32;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-weight: bold;
+}
+#chatScreen {
+  display: none;
+  flex-direction: column;
+  height: 100%;
+}
+header {
+  background: #2e7d32;
+  color: white;
+  padding: 15px;
+  font-size: 18px;
+  font-weight: bold;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+#messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: #fafafa;
+}
+.message {
+  max-width: 70%;
+  padding: 12px 15px;
+  border-radius: 18px;
+  font-size: 15px;
+  animation: slideUp 0.25s ease;
+  position: relative;
+  word-wrap: break-word;
+}
+.myMessage {
+  align-self: flex-end;
+  background: #4caf50;
+  color: white;
+  border-bottom-right-radius: 4px;
+}
+.otherMessage {
+  align-self: flex-start;
+  background: #e0e0e0;
+  color: black;
+  border-bottom-left-radius: 4px;
+}
+.message .menu {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  color: rgba(255,255,255,0.7);
+}
+.otherMessage .menu {
+  color: rgba(0,0,0,0.5);
+}
+.deleteBtn {
+  background: transparent;
+  border: none;
+  color: red;
+  cursor: pointer;
+  font-size: 13px;
+  margin-top: 4px;
+  display: none;
+}
+.message.showDelete .deleteBtn {
+  display: block;
+}
+footer {
+  display: flex;
+  padding: 12px;
+  background: #fff;
+  border-top: 1px solid #ddd;
+}
+footer input {
+  flex: 1;
+  padding: 12px;
+  border-radius: 24px;
+  border: 1px solid #ccc;
+  margin-right: 10px;
+  outline: none;
+  font-size: 15px;
+}
+footer button {
+  background: #4caf50;
+  border: none;
+  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  color: white;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+@keyframes slideUp {
+  from {opacity:0; transform: translateY(10px);}
+  to {opacity:1; transform: translateY(0);}
+}
+</style>
 </head>
 <body>
-  <div id="loginScreen">
-    <h2>Enter Chat</h2>
-    <input type="text" id="username" placeholder="Choose a display name">
-    <input type="password" id="pin" placeholder="Enter PIN">
-    <button onclick="login()">Enter</button>
-  </div>
+<div id="loginScreen">
+  <h2>Enter Chat</h2>
+  <input type="text" id="username" placeholder="Choose a display name">
+  <input type="password" id="pin" placeholder="Enter PIN">
+  <button onclick="login()">Enter</button>
+</div>
 
-  <div id="chatScreen">
-    <header>
-      <span>Chat</span>
-      <button onclick="logout()" style="background:none;border:none;color:white;font-size:14px;cursor:pointer;">Sign out</button>
-    </header>
-    <div id="messages"></div>
-    <footer>
-      <input type="text" id="messageInput" placeholder="Type a message...">
-      <button onclick="sendMessage()">➤</button>
-    </footer>
-  </div>
+<div id="chatScreen">
+  <header>
+    <span>Chat</span>
+    <button onclick="logout()" style="background:none;border:none;color:white;font-size:14px;cursor:pointer;">Sign out</button>
+  </header>
+  <div id="messages"></div>
+  <footer>
+    <input type="text" id="messageInput" placeholder="Type a message...">
+    <button onclick="sendMessage()">➤</button>
+  </footer>
+</div>
 
-  <script>
-    const API_BASE = "http://localhost:3000/api"; // replace with your server address
-    let currentUser = null;
+<script>
+const API_BASE = "http://localhost:3000/api"; // your backend
+let currentUser = null;
 
-    // Auto-login if saved
-    if(localStorage.getItem("chatUser")){
-      const saved = JSON.parse(localStorage.getItem("chatUser"));
-      currentUser = saved;
-      showChat();
-      loadMessages();
-    }
+if(localStorage.getItem("chatUser")){
+  currentUser = JSON.parse(localStorage.getItem("chatUser"));
+  showChat();
+  loadMessages();
+}
 
-    function login(){
-      const username = document.getElementById("username").value.trim();
-      const pin = document.getElementById("pin").value.trim();
+function login(){
+  const username = document.getElementById("username").value.trim();
+  const pin = document.getElementById("pin").value.trim();
+  if(pin !== "5432") return alert("Wrong PIN");
+  if(!username) return alert("Enter a name");
+  currentUser = { username };
+  localStorage.setItem("chatUser", JSON.stringify(currentUser));
+  showChat();
+  loadMessages();
+}
 
-      if(pin !== "5432"){ // hard-coded pin
-        alert("Wrong PIN");
-        return;
-      }
-      if(!username){
-        alert("Please enter a name");
-        return;
-      }
+function logout(){
+  localStorage.removeItem("chatUser");
+  location.reload();
+}
 
-      currentUser = { username };
-      localStorage.setItem("chatUser", JSON.stringify(currentUser));
-      showChat();
-      loadMessages();
-    }
+function showChat(){
+  document.getElementById("loginScreen").style.display = "none";
+  document.getElementById("chatScreen").style.display = "flex";
+}
 
-    function logout(){
-      localStorage.removeItem("chatUser");
-      location.reload();
-    }
+async function loadMessages(){
+  try{
+    const res = await fetch(`${API_BASE}/messages`);
+    const data = await res.json();
+    const container = document.getElementById("messages");
+    container.innerHTML = "";
+    data.forEach(renderMessage);
+    container.scrollTop = container.scrollHeight;
+  }catch(e){console.error(e);}
+}
 
-    function showChat(){
-      document.getElementById("loginScreen").style.display = "none";
-      document.getElementById("chatScreen").style.display = "flex";
-    }
+function renderMessage(msg){
+  const div = document.createElement("div");
+  div.classList.add("message", msg.username===currentUser.username ? "myMessage":"otherMessage");
+  div.innerHTML = `
+    <span>${msg.content}</span>
+    ${msg.username===currentUser.username ? `
+      <span class="menu" onclick="toggleDelete(this)">⋮</span>
+      <button class="deleteBtn" onclick="deleteMessage(${msg.id}, this)">Delete</button>
+    `:""}
+  `;
+  document.getElementById("messages").appendChild(div);
+}
 
-    async function loadMessages(){
-      const res = await fetch(`${API_BASE}/messages`);
-      const data = await res.json();
-      document.getElementById("messages").innerHTML = "";
-      data.forEach(msg => renderMessage(msg));
-      scrollToBottom();
-    }
+function toggleDelete(el){
+  el.parentElement.classList.toggle("showDelete");
+}
 
-    function renderMessage(msg){
-      const div = document.createElement("div");
-      div.classList.add("message");
-      div.classList.add(msg.username === currentUser.username ? "myMessage" : "otherMessage");
-      div.innerHTML = `
-        <span>${msg.content}</span>
-        ${msg.username === currentUser.username ? `
-          <span class="menu" onclick="toggleDelete(this)">⋮</span>
-          <button class="deleteBtn" onclick="deleteMessage(${msg.id}, this)">Delete</button>
-        ` : ""}
-      `;
-      document.getElementById("messages").appendChild(div);
-    }
+async function deleteMessage(id, btn){
+  await fetch(`${API_BASE}/messages/${id}`, { method:"DELETE" });
+  btn.parentElement.remove();
+}
 
-    function toggleDelete(el){
-      el.parentElement.classList.toggle("showDelete");
-    }
+async function sendMessage(){
+  const input = document.getElementById("messageInput");
+  const content = input.value.trim();
+  if(!content) return;
+  input.value = "";
+  try{
+    const res = await fetch(`${API_BASE}/send`, {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ username: currentUser.username, content })
+    });
+    const msg = await res.json();
+    renderMessage(msg);
+    document.getElementById("messages").scrollTop = document.getElementById("messages").scrollHeight;
+  }catch(e){console.error(e);}
+}
 
-    async function deleteMessage(id, btn){
-      await fetch(`${API_BASE}/messages/${id}`, { method: "DELETE" });
-      btn.parentElement.remove();
-    }
-
-    async function sendMessage(){
-      const input = document.getElementById("messageInput");
-      const content = input.value.trim();
-      if(!content) return;
-      input.value = "";
-      const res = await fetch(`${API_BASE}/send`, {
-        method: "POST",
-        headers: {"Content-Type":"application/json"},
-        body: JSON.stringify({ username: currentUser.username, content })
-      });
-      const msg = await res.json();
-      renderMessage(msg);
-      scrollToBottom();
-    }
-
-    function scrollToBottom(){
-      const m = document.getElementById("messages");
-      m.scrollTop = m.scrollHeight;
-    }
-
-    // Auto-refresh every 2s
-    setInterval(loadMessages, 2000);
-  </script>
+// Auto-refresh every 2s
+setInterval(loadMessages, 2000);
+</script>
 </body>
 </html>
