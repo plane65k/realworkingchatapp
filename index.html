@@ -1,183 +1,123 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Simple Chat</title>
-  <style>
-    body {
-      font-family: "Segoe UI", Roboto, Tahoma, sans-serif;
-      margin: 0;
-      height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      background: #f5f5f5; /* Android-like neutral */
-      color: black;
-    }
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Simple Chat — Full History</title>
+<style>
+  /* Clean Android/Google Chat-ish look */
+  body {
+    font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    margin: 0;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: #f5f5f5;
+    color: #111;
+  }
 
-    .chat-container {
-      width: 95%;
-      max-width: 1100px;
-      height: 90vh;
-      background: #fff;
-      border-radius: 12px;
-      box-shadow: 0 8px 30px rgba(0,0,0,0.2);
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
+  .chat-container {
+    width: 95%;
+    max-width: 1100px;
+    height: 90vh;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
 
-    #chat {
-      flex: 1;
-      overflow-y: auto;
-      padding: 20px;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
+  #chat {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    background: #ffffff;
+  }
 
-    .sidebar {
-      display: flex;
-      flex-direction: column;
-      padding: 15px;
-      gap: 10px;
-      border-top: 1px solid #ddd;
-      background: #fafafa;
-    }
+  .sidebar {
+    display:flex;
+    flex-direction:column;
+    padding:15px;
+    gap:10px;
+    border-top:1px solid #eee;
+    background:#fafafa;
+  }
 
-    /* Android-like chat bubbles */
-    .message {
-      max-width: 70%;
-      padding: 10px 14px;
-      border-radius: 18px;
-      line-height: 1.4;
-      word-wrap: break-word;
-      position: relative;
-      font-size: 0.95em;
-    }
+  /* message bubbles */
+  .message {
+    max-width: 72%;
+    padding: 10px 14px;
+    border-radius: 18px;
+    line-height: 1.35;
+    word-wrap: break-word;
+    position: relative;
+    font-size: 0.95rem;
+    box-shadow: 0 1px 0 rgba(0,0,0,0.02);
+  }
+  .message.left  { align-self: flex-start;  background: #f1f3f4; color: #111; border-bottom-left-radius: 4px; }
+  .message.right { align-self: flex-end;    background: #d9f0d9; color: #022; border-bottom-right-radius: 4px; }
+  .message .meta { font-size: 0.78rem; color: #666; margin-top: 6px; text-align: right; }
 
-    .message.left {
-      align-self: flex-start;
-      background: #e9ecef;
-      border-bottom-left-radius: 4px;
-    }
+  .message img { max-width: 320px; border-radius: 8px; display:block; margin-top:8px; }
+  .message a { color: #0b77d6; word-break: break-all; }
 
-    .message.right {
-      align-self: flex-end;
-      background: #cdeccd;
-      border-bottom-right-radius: 4px;
-    }
+  /* options (3-dot) */
+  .options {
+    position:absolute; top:6px; right:8px; cursor:pointer; color:#666; font-weight:600;
+  }
+  .options-menu {
+    position:absolute; top:28px; right:8px; display:none;
+    background:#fff; border:1px solid #ddd; border-radius:6px; box-shadow:0 6px 18px rgba(0,0,0,0.12); z-index:30;
+  }
+  .options-menu button { display:block; width:100%; padding:8px 12px; border:none; background:transparent; text-align:left; cursor:pointer; }
+  .options-menu button:hover{ background:#f6f6f6; }
 
-    .message img {
-      max-width: 260px;
-      border-radius: 8px;
-      margin-top: 6px;
-      display: block;
-    }
+  input, textarea {
+    width:100%; padding:10px; border-radius:8px; border:1px solid #ccc; outline:none; font-size:0.95rem;
+  }
+  textarea { resize:none; height:80px; }
+  button.primary { padding:10px 16px; background:#0b93f6; color:white; border:none; border-radius:8px; cursor:pointer; }
+  button.positive { background:#5cb85c; color:white; border:none; padding:10px 16px; border-radius:8px; cursor:pointer; }
+  button.warn { background:#d9534f; color:white; border:none; padding:10px 16px; border-radius:8px; cursor:pointer; }
 
-    .timestamp {
-      font-size: 0.75em;
-      color: #666;
-      margin-top: 2px;
-      text-align: right;
-    }
+  .overlay { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.5); z-index:1000; }
+  .pin-box { background:#fff; padding:28px; border-radius:10px; width:92%; max-width:360px; text-align:center; }
+  .pin-box input { text-align:center; font-size:1rem; padding:12px; border:1px solid #ddd; border-radius:8px; width:100%; margin-bottom:12px; }
 
-    input, textarea {
-      width: 100%;
-      padding: 10px;
-      border-radius: 8px;
-      border: 1px solid #ccc;
-      outline: none;
-    }
-
-    textarea { resize: none; height: 80px; }
-
-    button {
-      padding: 10px 18px;
-      background: #5cb85c;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-    }
-
-    button:disabled { opacity: 0.5; cursor: not-allowed; }
-
-    .overlay {
-      position: fixed; inset: 0;
-      display: flex; justify-content: center; align-items: center;
-      background: rgba(0, 0, 0, 0.6);
-      z-index: 100;
-    }
-
-    .pin-box {
-      background: #fff; padding: 30px; border-radius: 12px; text-align: center; width: 90%; max-width: 300px;
-    }
-
-    .pin-box input {
-      width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #ccc; text-align: center; margin-bottom: 15px; font-size: 1em;
-    }
-
-    .pin-box button {
-      padding: 10px 18px; border-radius: 8px; border: none; background: #5cb85c; color: #fff; cursor: pointer;
-    }
-
-    /* 3-dot menu */
-    .options {
-      position: absolute;
-      top: 5px;
-      right: 8px;
-      cursor: pointer;
-      font-weight: bold;
-      color: #555;
-    }
-
-    .options-menu {
-      position: absolute;
-      top: 20px;
-      right: 8px;
-      background: #fff;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-      display: none;
-      z-index: 10;
-    }
-
-    .options-menu button {
-      background: none;
-      color: #000;
-      border: none;
-      padding: 6px 12px;
-      text-align: left;
-      width: 100%;
-      cursor: pointer;
-    }
-
-    .options-menu button:hover {
-      background: #f0f0f0;
-    }
-  </style>
+  .small { font-size:0.86rem; color:#666; }
+</style>
 </head>
 <body>
 
-<!-- PIN overlay -->
+<!-- PIN overlay (one-time per device) -->
 <div class="overlay" id="pinOverlay">
   <div class="pin-box">
     <h2>Enter PIN</h2>
-    <input type="password" id="pinInput" placeholder="Enter PIN">
-    <button id="pinBtn">Continue</button>
+    <input id="pinInput" type="password" placeholder="Enter PIN (5432)">
+    <div style="height:12px"></div>
+    <button id="pinBtn" class="positive">Continue</button>
+    <div style="height:10px"></div>
+    <div class="small">PIN is stored locally and only required once per device.</div>
   </div>
 </div>
 
-<div class="chat-container" id="chatApp" style="display: none;">
-  <div id="chat"></div>
+<!-- Chat UI -->
+<div class="chat-container" id="chatApp" style="display:none;">
+  <div id="chat" aria-live="polite" role="log"></div>
+
   <div class="sidebar">
-    <input type="text" id="username" placeholder="Enter username..." />
-    <textarea id="message" placeholder="Type message or paste image URL..." disabled></textarea>
-    <button id="send" disabled>Send</button>
-    <button id="deleteLocalData">Delete Local Data</button>
+    <input id="username" type="text" placeholder="Enter username..." />
+    <textarea id="message" placeholder="Type a message or paste image URL..." disabled></textarea>
+    <div style="display:flex; gap:8px;">
+      <button id="send" class="positive" disabled>Send</button>
+      <button id="deleteLocalData" class="warn">Delete Local Data</button>
+    </div>
+    <div class="small">Tip: paste an image URL to embed the image. Click ⋮ on your message to delete it.</div>
   </div>
 </div>
 
@@ -185,160 +125,287 @@
 
 <script src="https://cdn.ably.com/lib/ably.min-1.js"></script>
 <script>
+(async function(){
+  // ********** Config **********
   const COMMON_PIN = '5432';
-  const ably = new Ably.Realtime('Vtd4-A.9jmIFA:umDML_i9STQP4BIH_u2Jon5BlkxuiK36w37FVrkhEl4');
-  const channel = ably.channels.get('chat');
+  const ABLY_KEY = 'Vtd4-A.9jmIFA:umDML_i9STQP4BIH_u2Jon5BlkxuiK36w37FVrkhEl4';
+  const CHANNEL_NAME = 'chat';
 
+  // ********** DOM **********
   const pinOverlay = document.getElementById('pinOverlay');
   const pinInput = document.getElementById('pinInput');
   const pinBtn = document.getElementById('pinBtn');
+
   const chatApp = document.getElementById('chatApp');
+  const chatDiv = document.getElementById('chat');
   const usernameInput = document.getElementById('username');
   const messageInput = document.getElementById('message');
   const sendBtn = document.getElementById('send');
   const deleteLocalDataBtn = document.getElementById('deleteLocalData');
-  const chatDiv = document.getElementById('chat');
-  const newMessageSound = document.getElementById('newMessageSound');
+  const newMsgSound = document.getElementById('newMessageSound');
 
-  // PIN logic
-  if (localStorage.getItem('chatPin') === COMMON_PIN) {
+  // ********** State **********
+  let ably = null;
+  let channel = null;
+  const seenIds = new Set(); // prevent duplicates
+  // utility to safely parse message data (history items may already be objects)
+  const parseData = d => {
+    if (typeof d === 'string') {
+      try { return JSON.parse(d); } catch(e){ return { message: d, timestamp: Date.now() }; }
+    }
+    return d || {};
+  };
+
+  // ********** PIN Flow (one-time per device) **********
+  const storedPin = localStorage.getItem('chatPin');
+  if (storedPin === COMMON_PIN) {
     pinOverlay.style.display = 'none';
     chatApp.style.display = 'flex';
-    if (localStorage.getItem('username')) {
-      usernameInput.value = localStorage.getItem('username');
+    const savedName = localStorage.getItem('username');
+    if (savedName) {
+      usernameInput.value = savedName;
       messageInput.disabled = false;
       sendBtn.disabled = false;
     }
+    // start ably connection immediately (no waiting)
+    await startAbly();
+  } else {
+    pinOverlay.style.display = 'flex';
   }
 
-  pinBtn.addEventListener('click', () => {
-    if (pinInput.value.trim() === COMMON_PIN) {
+  pinBtn.addEventListener('click', async () => {
+    const val = (pinInput.value || '').trim();
+    if (!val) return alert('Enter the PIN');
+    if (val === COMMON_PIN) {
       localStorage.setItem('chatPin', COMMON_PIN);
       pinOverlay.style.display = 'none';
       chatApp.style.display = 'flex';
-      if (localStorage.getItem('username')) {
-        usernameInput.value = localStorage.getItem('username');
+      const savedName = localStorage.getItem('username');
+      if (savedName) {
+        usernameInput.value = savedName;
         messageInput.disabled = false;
         sendBtn.disabled = false;
       }
+      await startAbly();
     } else {
       alert('Wrong PIN');
     }
   });
 
-  usernameInput.addEventListener('change', () => {
-    const name = usernameInput.value.trim();
-    if (!name) return;
-    localStorage.setItem('username', name);
-    messageInput.disabled = false;
-    sendBtn.disabled = false;
-  });
+  // ********** Start Ably and load full history **********
+  async function startAbly(){
+    if (ably) return;
+    ably = new Ably.Realtime(ABLY_KEY);
+    channel = ably.channels.get(CHANNEL_NAME);
 
-  // Render message
-  function displayMessage({ username, message, timestamp, messageId, deleted }) {
-    const existing = document.querySelector(`[data-id="${messageId}"]`);
-    if (deleted) {
-      if (existing) existing.innerHTML = "<em>Message deleted</em>";
+    // Subscribe to live events first so we don't miss messages while loading
+    channel.subscribe(handleRealtimeMessage);
+
+    // Load ALL history pages (forward = oldest -> newest)
+    await loadAllHistory();
+
+    // play a tiny notification on subscription new messages (handled in handler)
+  }
+
+  // loadAllHistory: page through history until done
+  async function loadAllHistory(){
+    try {
+      // clear UI, reset seen set
+      // We clear to avoid duplicates from previous partial loads
+      // but we won't clear on each incremental load; we clear once before full history load
+      chatDiv.innerHTML = '';
+      seenIds.clear();
+
+      const params = { direction: 'forwards', limit: 100 };
+      let page = await channel.history(params);
+
+      // iterate pages
+      while (page) {
+        // page.items is an array of Ably message objects (oldest-first for forwards)
+        for (const item of page.items) {
+          // item.data might be string or object
+          const data = parseData(item.data);
+          // choose a stable id for dedupe: prefer publisher messageId, then Ably server id
+          const key = (data && data.messageId) || item.id || `${data.timestamp||''}|${data.username||''}|${String(data.message||'')}`;
+          processHistoryMessage(item, data, key);
+        }
+        if (page.hasNext) {
+          page = await page.next();
+        } else break;
+      }
+    } catch (err) {
+      console.error('Error loading history', err);
+      // show partial content if any
+    }
+  }
+
+  // process history item (keeps ordering)
+  function processHistoryMessage(item, data, key) {
+    // handle deletion events: message payload might be { messageId, deleted:true }
+    if (data && data.deleted && data.messageId) {
+      // mark deleted: find element (by dataset) and replace content
+      const el = chatDiv.querySelector(`[data-id="${data.messageId}"]`);
+      if (el) {
+        el.innerHTML = `<em style="color:#666">Message deleted</em>`;
+      }
+      // still mark seen (so we don't re-render deletion later)
+      seenIds.add(data.messageId);
       return;
     }
-    if (existing) return; // prevent duplicates
 
-    const currentUser = localStorage.getItem('username');
-    const msgEl = document.createElement('div');
-    msgEl.className = 'message ' + (username === currentUser ? 'right' : 'left');
-    msgEl.dataset.id = messageId;
+    // if normal message and not seen -> render
+    if (!seenIds.has(key)) {
+      seenIds.add(key);
+      // Use the publisher messageId if exists, else Ably item.id (persisted id)
+      const domId = (data && data.messageId) || item.id || key;
+      displayMessage(data, domId);
+    }
+  }
 
-    let content = message;
-    if (message.match(/^https?:\/\/.*\.(jpg|jpeg|png|gif|webp)$/i)) {
-      content = `<img src="${message}" alt="image">`;
-    } else if (message.match(/^https?:\/\//i)) {
-      content = `<a href="${message}" target="_blank">${message}</a>`;
+  // Realtime message handler (new publishes)
+  function handleRealtimeMessage(msg) {
+    // msg is Ably Message object for realtime events
+    const data = parseData(msg.data);
+    // decide id
+    const key = (data && data.messageId) || msg.id || `${data.timestamp||''}|${data.username||''}|${String(data.message||'')}`;
+    // If it's a deletion signal
+    if (data && data.deleted && data.messageId) {
+      // apply deletion immediately
+      const el = chatDiv.querySelector(`[data-id="${data.messageId}"]`);
+      if (el) el.innerHTML = `<em style="color:#666">Message deleted</em>`;
+      // ensure we don't later double-add original
+      seenIds.add(data.messageId);
+      return;
+    }
+    // dedupe and render
+    if (!seenIds.has(key)) {
+      seenIds.add(key);
+      const domId = (data && data.messageId) || msg.id || key;
+      displayMessage(data, domId, true);
+    }
+  }
+
+  // Display message in UI
+  function displayMessage(data, domId, isRealtime=false) {
+    // data should include: username, message, timestamp
+    const currentUser = localStorage.getItem('username') || '';
+    const isMine = (data && data.username) === currentUser;
+
+    const el = document.createElement('div');
+    el.className = 'message ' + (isMine ? 'right' : 'left');
+    el.dataset.id = domId;
+
+    // render content (image detection / links)
+    let content = '';
+    const msgText = (data && data.message) || '';
+    if (typeof msgText === 'string' && msgText.match(/^https?:\/\/.*\.(jpg|jpeg|png|gif|webp)$/i)) {
+      content = `<img src="${escapeHtml(msgText)}" alt="image">`;
+    } else if (typeof msgText === 'string' && msgText.match(/^https?:\/\//i)) {
+      content = `<a href="${escapeHtml(msgText)}" target="_blank" rel="noopener">${escapeHtml(msgText)}</a>`;
+    } else {
+      content = `<div>${escapeHtml(msgText)}</div>`;
     }
 
-    msgEl.innerHTML = `<div><strong>${username}</strong><br>${content}</div>
-                       <div class="timestamp">${new Date(timestamp).toLocaleTimeString()}</div>`;
+    const ts = data && data.timestamp ? new Date(data.timestamp).toLocaleTimeString() : '';
 
-    // If it's my message → add 3-dot menu
-    if (username === currentUser) {
-      const options = document.createElement('div');
-      options.className = 'options';
-      options.textContent = "⋮";
+    // base inner HTML
+    el.innerHTML = `<div><strong>${escapeHtml(data.username || 'Anonymous')}</strong><div style="margin-top:6px">${content}</div></div>
+                    <div class="meta"><span class="timestamp">${ts}</span></div>`;
+
+    // add options for own messages
+    if (isMine) {
+      const opts = document.createElement('div');
+      opts.className = 'options';
+      opts.textContent = '⋮';
 
       const menu = document.createElement('div');
       menu.className = 'options-menu';
       const delBtn = document.createElement('button');
-      delBtn.textContent = "Delete";
+      delBtn.textContent = 'Delete message';
       delBtn.onclick = () => {
-        deleteMessage(messageId);
-        menu.style.display = "none";
+        // publish a deletion event
+        const targetId = (data && data.messageId) || domId;
+        channel.publish('message', JSON.stringify({ messageId: targetId, deleted: true, timestamp: Date.now() }));
+        // locally mark deleted immediately for snappy UX
+        const node = chatDiv.querySelector(`[data-id="${targetId}"]`);
+        if (node) node.innerHTML = `<em style="color:#666">Message deleted</em>`;
+        menu.style.display = 'none';
       };
       menu.appendChild(delBtn);
 
-      options.onclick = () => {
-        menu.style.display = (menu.style.display === "block") ? "none" : "block";
+      opts.onclick = (ev) => {
+        ev.stopPropagation();
+        menu.style.display = (menu.style.display === 'block') ? 'none' : 'block';
       };
 
-      msgEl.appendChild(options);
-      msgEl.appendChild(menu);
+      el.appendChild(opts);
+      el.appendChild(menu);
     }
 
-    chatDiv.appendChild(msgEl);
+    // append to chat
+    chatDiv.appendChild(el);
+
+    // if realtime and not visible at bottom, we still scroll to bottom for now
     chatDiv.scrollTop = chatDiv.scrollHeight;
-  }
 
-  // Load ALL history, paginated
-  function loadAllHistory(channel, callback) {
-    let params = { direction: 'forwards', limit: 100 };
-    function getPage(page) {
-      page.items.forEach(item => callback(JSON.parse(item.data)));
-      if (page.hasNext()) {
-        page.next().then(getPage);
-      }
+    // play sound for realtime messages not sent by me
+    if (isRealtime && !isMine) {
+      try { newMsgSound.play(); } catch(e) {}
     }
-    channel.history(params).then(getPage);
   }
 
-  // Subscribe to live updates
-  channel.subscribe('message', msg => {
-    displayMessage(JSON.parse(msg.data));
-    newMessageSound.play();
-  });
-
-  // Initial load
-  loadAllHistory(channel, displayMessage);
-
-  // Send
-  function sendMessage() {
-    const name = usernameInput.value.trim();
-    const msg = messageInput.value.trim();
-    if (!name || !msg) return;
-    const data = { username: name, message: msg, timestamp: Date.now(), messageId: Date.now() + "-" + Math.random() };
-    channel.publish('message', JSON.stringify(data));
-    messageInput.value = '';
+  // escape helper
+  function escapeHtml(s) {
+    if (!s) return '';
+    return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   }
 
-  // Delete
-  function deleteMessage(messageId) {
-    const data = { messageId, deleted: true };
-    channel.publish('message', JSON.stringify(data));
-  }
-
-  sendBtn.addEventListener('click', sendMessage);
+  // ********** Sending messages **********
+  sendBtn.addEventListener('click', publishMessage);
   messageInput.addEventListener('keypress', e => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      sendMessage();
+      publishMessage();
     }
   });
 
-  // Delete local data (logout)
+  function publishMessage(){
+    const name = (usernameInput.value || '').trim();
+    const txt = (messageInput.value || '').trim();
+    if (!name || !txt) return alert('Please set a username and type a message.');
+    // persist username locally
+    localStorage.setItem('username', name);
+    // always include a messageId so deletions work across devices
+    const messageId = `${Date.now()}-${Math.random().toString(36).slice(2,9)}`;
+    const payload = { username: name, message: txt, timestamp: Date.now(), messageId };
+    channel.publish('message', JSON.stringify(payload));
+    messageInput.value = '';
+  }
+
+  // enable message input when username entered
+  usernameInput.addEventListener('change', () => {
+    const nm = (usernameInput.value || '').trim();
+    if (nm) {
+      localStorage.setItem('username', nm);
+      messageInput.disabled = false;
+      sendBtn.disabled = false;
+    }
+  });
+
+  // delete local data
   deleteLocalDataBtn.addEventListener('click', () => {
     localStorage.removeItem('chatPin');
     localStorage.removeItem('username');
-    alert('Local data deleted. Refresh page to log in again.');
+    alert('Local data cleared. Refresh to re-enter PIN and username.');
     pinOverlay.style.display = 'flex';
     chatApp.style.display = 'none';
   });
+
+  // show/hide chat app after starting Ably handled above in PIN flow
+  // if not started yet (user already had PIN but ably not started) ensure started
+  // startAbly already invoked earlier if PIN present
+
+})(); // end IIFE
 </script>
 </body>
 </html>
