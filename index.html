@@ -1,398 +1,278 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Supabase Chat — Full History</title>
+  <meta charset="UTF-8">
+  <title>Chat App</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: "Roboto", sans-serif;
+      background: #f5f5f5;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
 
-<!-- Supabase JS -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js/dist/umd/supabase.min.js"></script>
+    /* Login / PIN screen */
+    #loginScreen {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      flex: 1;
+      background: linear-gradient(135deg, #4caf50, #2e7d32);
+      color: white;
+      animation: fadeIn 0.6s ease;
+    }
+    #loginScreen input {
+      padding: 12px;
+      border: none;
+      border-radius: 12px;
+      margin: 10px;
+      width: 240px;
+      font-size: 16px;
+    }
+    #loginScreen button {
+      background: white;
+      color: #2e7d32;
+      border: none;
+      padding: 12px 20px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background 0.2s;
+    }
+    #loginScreen button:hover {
+      background: #c8e6c9;
+    }
 
-<style>
-  /* Android / Google Chat-ish styling + smooth animation */
-  :root{
-    --bg:#f5f7f9;
-    --card:#fff;
-    --primary:#0b93f6;
-    --accent:#5cb85c;
-    --muted:#8a8f98;
-  }
-  html,body{height:100%;margin:0;font-family: "Google Sans", "Segoe UI", Roboto, Arial; background:var(--bg);}
-  .wrap{height:100vh; display:flex; align-items:center; justify-content:center; padding:18px;}
-  .chat-container{
-    width:96%; max-width:1100px; height:94vh; background:var(--card); border-radius:12px; box-shadow:0 8px 30px rgba(0,0,0,0.12);
-    display:flex; flex-direction:column; overflow:hidden;
-  }
+    /* Chat screen */
+    #chatScreen {
+      display: none;
+      flex-direction: column;
+      height: 100%;
+    }
+    header {
+      background: #2e7d32;
+      color: white;
+      padding: 15px;
+      font-size: 18px;
+      font-weight: bold;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    }
+    #messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 15px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      background: #fafafa;
+    }
+    .message {
+      max-width: 70%;
+      padding: 12px 15px;
+      border-radius: 18px;
+      font-size: 15px;
+      animation: slideUp 0.25s ease;
+      position: relative;
+      word-wrap: break-word;
+    }
+    .myMessage {
+      align-self: flex-end;
+      background: #4caf50;
+      color: white;
+      border-bottom-right-radius: 4px;
+    }
+    .otherMessage {
+      align-self: flex-start;
+      background: #e0e0e0;
+      color: black;
+      border-bottom-left-radius: 4px;
+    }
+    .message .menu {
+      position: absolute;
+      top: 6px;
+      right: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      color: rgba(255,255,255,0.7);
+    }
+    .otherMessage .menu {
+      color: rgba(0,0,0,0.5);
+    }
+    .deleteBtn {
+      background: transparent;
+      border: none;
+      color: red;
+      cursor: pointer;
+      font-size: 13px;
+      margin-top: 4px;
+      display: none;
+    }
+    .message.showDelete .deleteBtn {
+      display: block;
+    }
+    footer {
+      display: flex;
+      padding: 12px;
+      background: #fff;
+      border-top: 1px solid #ddd;
+    }
+    footer input {
+      flex: 1;
+      padding: 12px;
+      border-radius: 24px;
+      border: 1px solid #ccc;
+      margin-right: 10px;
+      outline: none;
+      font-size: 15px;
+    }
+    footer button {
+      background: #4caf50;
+      border: none;
+      border-radius: 50%;
+      width: 48px;
+      height: 48px;
+      color: white;
+      font-size: 20px;
+      cursor: pointer;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      transition: background 0.2s;
+    }
+    footer button:hover {
+      background: #43a047;
+    }
 
-  /* chat area */
-  #chat {
-    flex:1; overflow:auto; padding:20px; display:flex; flex-direction:column; gap:12px;
-    scroll-behavior:smooth; background:linear-gradient(180deg,#fff,#fbfdff);
-  }
-
-  /* message bubble */
-  .message{
-    max-width:72%; padding:10px 14px; border-radius:16px; position:relative; transition:transform .16s ease, opacity .2s ease;
-    box-shadow: 0 1px 0 rgba(0,0,0,0.04);
-    transform-origin: bottom;
-    opacity:1;
-  }
-  .message.enter{ transform: translateY(8px); opacity:0; }
-  .message.show{ transform: translateY(0); opacity:1; }
-
-  .left{ align-self:flex-start; background:#f1f3f5; color:#111; border-bottom-left-radius:6px; }
-  .right{ align-self:flex-end; background:#dcf8dc; color:#062; border-bottom-right-radius:6px; }
-
-  .meta { font-size:0.82rem; color:var(--muted); margin-top:8px; text-align:right; }
-
-  .message img{ max-width:320px; border-radius:8px; display:block; margin-top:8px; }
-
-  /* options menu */
-  .options{ position:absolute; top:6px; right:8px; cursor:pointer; color:#666; font-weight:700; user-select:none; }
-  .options-menu{ position:absolute; top:28px; right:6px; display:none; background:#fff; border:1px solid #eee; border-radius:6px; box-shadow:0 8px 22px rgba(0,0,0,0.12); z-index:40; }
-  .options-menu button{ display:block; padding:8px 12px; border:none; background:transparent; width:100%; text-align:left; cursor:pointer; }
-  .options-menu button:hover{ background:#f6f6f6; }
-
-  /* controls */
-  .controls{ display:flex; gap:10px; padding:14px; border-top:1px solid #eee; background:#fafafa; align-items:center; }
-  input[type=text], textarea{ width:100%; padding:12px; border-radius:10px; border:1px solid #ddd; outline:none; font-size:0.95rem; }
-  textarea{ resize:none; height:76px; }
-  button.primary{ padding:10px 14px; border-radius:10px; background:var(--primary); color:#fff; border:none; cursor:pointer; box-shadow:0 6px 18px rgba(11,147,246,0.12); }
-  button.positive{ background:var(--accent); }
-  button.ghost{ background:transparent; border:1px solid #ddd; color:#333; }
-
-  .left-col{ display:flex; gap:10px; align-items:center; width:320px; padding:12px; }
-  .small{ font-size:0.86rem; color:var(--muted); }
-
-  /* responsive */
-  @media (max-width:680px){
-    .chat-container{ height:100vh; border-radius:0; }
-    .left-col{ width:100%; padding:8px; }
-  }
-</style>
+    @keyframes fadeIn {
+      from {opacity:0;}
+      to {opacity:1;}
+    }
+    @keyframes slideUp {
+      from {opacity:0; transform: translateY(10px);}
+      to {opacity:1; transform: translateY(0);}
+    }
+  </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="chat-container" role="application" aria-label="Chat">
-    <!-- chat feed -->
-    <div id="chat" role="log" aria-live="polite"></div>
-
-    <!-- controls / sidebar area -->
-    <div class="controls">
-      <div class="left-col">
-        <input id="username" type="text" placeholder="Display name (saved locally)" />
-      </div>
-      <textarea id="message" placeholder="Type a message or paste image URL..." disabled></textarea>
-      <button id="send" class="positive" disabled>Send</button>
-      <button id="deleteLocalData" class="ghost">Delete Local Data</button>
-    </div>
+  <div id="loginScreen">
+    <h2>Enter Chat</h2>
+    <input type="text" id="username" placeholder="Choose a display name">
+    <input type="password" id="pin" placeholder="Enter PIN">
+    <button onclick="login()">Enter</button>
   </div>
-</div>
 
-<!-- PIN overlay -->
-<div id="pinOverlay" style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.45);z-index:9999">
-  <div style="background:#fff;padding:26px;border-radius:10px;min-width:320px;max-width:92%;text-align:center">
-    <h3 style="margin:0 0 10px 0">Enter PIN</h3>
-    <input id="pinInput" type="password" placeholder="PIN (5432)" style="width:100%;padding:12px;border-radius:8px;border:1px solid #ddd;text-align:center">
-    <div style="height:12px"></div>
-    <button id="pinBtn" class="primary">Continue</button>
-    <div style="height:8px"></div>
-    <div class="small">PIN is stored locally and required once per device.</div>
+  <div id="chatScreen">
+    <header>
+      <span>Chat</span>
+      <button onclick="logout()" style="background:none;border:none;color:white;font-size:14px;cursor:pointer;">Sign out</button>
+    </header>
+    <div id="messages"></div>
+    <footer>
+      <input type="text" id="messageInput" placeholder="Type a message...">
+      <button onclick="sendMessage()">➤</button>
+    </footer>
   </div>
-</div>
 
-<!-- tiny notification sound -->
-<audio id="newMessageSound" src="https://www.soundjay.com/button/sounds/button-3.mp3" preload="auto"></audio>
+  <script>
+    const API_BASE = "http://localhost:3000/api"; // replace with your server address
+    let currentUser = null;
 
-<script>
-(async ()=> {
-  // ---------- config ----------
-  const SUPABASE_ANON_JWT = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indra3hpc3ZleWJwa2Vyb2dnZ29uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk1MzM1NjAsImV4cCI6MjA3NTEwOTU2MH0.70Yz5tSGaGMCy04BmzhoKrgwezx1c4Aw3RARnSsYu2w';
-
-  // decode JWT payload to get "ref" claim (project ref)
-  function parseJwt (token) {
-    try {
-      const payload = token.split('.')[1];
-      const json = atob(payload.replace(/-/g,'+').replace(/_/g,'/'));
-      return JSON.parse(json);
-    } catch(e){
-      return null;
+    // Auto-login if saved
+    if(localStorage.getItem("chatUser")){
+      const saved = JSON.parse(localStorage.getItem("chatUser"));
+      currentUser = saved;
+      showChat();
+      loadMessages();
     }
-  }
-  const payload = parseJwt(SUPABASE_ANON_JWT);
-  if(!payload || !payload.ref){
-    console.error('Could not parse Supabase ref from JWT. Ensure token contains "ref" claim.');
-  }
-  const SUPABASE_REF = payload && payload.ref ? payload.ref : prompt('Enter your Supabase project ref (e.g. abcdefgh):');
-  const SUPABASE_URL = `https://${SUPABASE_REF}.supabase.co`;
-  const SUPABASE_KEY = SUPABASE_ANON_JWT;
 
-  // supabase client
-  const supabase = supabaseJs.createClient(SUPABASE_URL, SUPABASE_KEY);
+    function login(){
+      const username = document.getElementById("username").value.trim();
+      const pin = document.getElementById("pin").value.trim();
 
-  // ---------- DOM ----------
-  const chatDiv = document.getElementById('chat');
-  const usernameInput = document.getElementById('username');
-  const messageInput = document.getElementById('message');
-  const sendBtn = document.getElementById('send');
-  const deleteLocalDataBtn = document.getElementById('deleteLocalData');
-  const newMsgSound = document.getElementById('newMessageSound');
-  const pinOverlay = document.getElementById('pinOverlay');
-  const pinInput = document.getElementById('pinInput');
-  const pinBtn = document.getElementById('pinBtn');
-
-  // ---------- state ----------
-  const COMMON_PIN = '5432';
-  let myPin = localStorage.getItem('chatPin') || null;
-  let seenKeys = new Set(); // dedupe messages
-  let userSaved = localStorage.getItem('username') || '';
-
-  // helper to create stable key for a row
-  const rowKey = (row) => (row.messageId ? String(row.messageId) : String(row.id || row.created_at || JSON.stringify(row)));
-
-  // escape
-  function escapeHtml(s){
-    if(!s) return '';
-    return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  }
-
-  // ---------- PIN flow ----------
-  if (localStorage.getItem('chatPin') === COMMON_PIN) {
-    pinOverlay.style.display = 'none';
-    if(userSaved){
-      usernameInput.value = userSaved;
-      messageInput.disabled = false; sendBtn.disabled=false;
-    }
-    await start(); // start connection immediately
-  } else {
-    pinOverlay.style.display = 'flex';
-  }
-
-  pinBtn.addEventListener('click', async ()=>{
-    const val = (pinInput.value||'').trim();
-    if(!val) return alert('Enter PIN');
-    if(val === COMMON_PIN){
-      localStorage.setItem('chatPin', COMMON_PIN);
-      myPin = COMMON_PIN;
-      pinOverlay.style.display = 'none';
-      if(userSaved){
-        usernameInput.value = userSaved;
-        messageInput.disabled = false; sendBtn.disabled=false;
+      if(pin !== "5432"){ // hard-coded pin
+        alert("Wrong PIN");
+        return;
       }
-      await start();
-    } else {
-      alert('Wrong PIN');
-    }
-  });
-
-  // ---------- start: load all + subscribe ----------
-  async function start(){
-    // clear UI
-    chatDiv.innerHTML=''; seenKeys.clear();
-
-    // load all messages from Supabase table 'messages'
-    // select all columns; adjust if your column names differ (id, username, content OR message, created_at, user_pin)
-    // we assume SQL has columns: id, username, content, created_at, user_pin, messageId (optional)
-    try {
-      const { data, error } = await supabase
-        .from('messages')
-        .select('*')
-        .order('created_at', { ascending: true });
-
-      if(error) throw error;
-
-      if(Array.isArray(data)){
-        data.forEach(row => {
-          // normalize: support both 'content' or 'message' column names
-          const normalized = {
-            id: row.id,
-            username: row.username || row.user_name || 'Anonymous',
-            message: row.content !== undefined ? row.content : (row.message || ''),
-            timestamp: row.created_at || row.createdAt || Date.now(),
-            messageId: row.messageId || row.id
-          };
-          renderRow(normalized, false);
-        });
+      if(!username){
+        alert("Please enter a name");
+        return;
       }
-    } catch(err){
-      console.error('Error loading messages:', err);
+
+      currentUser = { username };
+      localStorage.setItem("chatUser", JSON.stringify(currentUser));
+      showChat();
+      loadMessages();
     }
 
-    // subscribe realtime to inserts and deletes
-    // use Postgres changes subscription (works in supabase-js v2)
-    // we'll do both INSERT and DELETE
-    try {
-      const subscription = supabase.channel('public:messages')
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
-          const row = payload.new;
-          const normalized = {
-            id: row.id,
-            username: row.username || 'Anonymous',
-            message: row.content !== undefined ? row.content : (row.message || ''),
-            timestamp: row.created_at || Date.now(),
-            messageId: row.messageId || row.id
-          };
-          renderRow(normalized, true);
-        })
-        .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'messages' }, payload => {
-          const old = payload.old;
-          const idKey = old.messageId || old.id;
-          // mark deleted in UI
-          const el = chatDiv.querySelector(`[data-id="${idKey}"]`);
-          if(el) el.innerHTML = `<em style="color:#666">Message deleted</em>`;
-          seenKeys.add(String(idKey));
-        })
-        .subscribe();
-
-      // optional: handle presence / errors via subscription
-    } catch(e){
-      console.error('Realtime subscribe error', e);
-    }
-  }
-
-  // ---------- render a row (dedupe + animation) ----------
-  function renderRow(row, isRealtime=true){
-    const key = rowKey(row);
-    if(seenKeys.has(String(key))) return;
-    seenKeys.add(String(key));
-
-    const currentName = localStorage.getItem('username') || usernameInput.value || '';
-    const isMine = (row.username === currentName);
-
-    const el = document.createElement('div');
-    el.className = 'message ' + (isMine ? 'right' : 'left');
-    el.dataset.id = row.messageId || row.id;
-
-    // content
-    let contentHtml = '';
-    if(typeof row.message === 'string' && row.message.match(/^https?:\/\/.*\.(jpg|jpeg|png|gif|webp)$/i)){
-      contentHtml = `<img src="${escapeHtml(row.message)}" alt="image">`;
-    } else if(typeof row.message === 'string' && row.message.match(/^https?:\/\//i)){
-      contentHtml = `<a href="${escapeHtml(row.message)}" target="_blank" rel="noopener">${escapeHtml(row.message)}</a>`;
-    } else {
-      contentHtml = `<div>${escapeHtml(row.message)}</div>`;
+    function logout(){
+      localStorage.removeItem("chatUser");
+      location.reload();
     }
 
-    const ts = row.timestamp ? new Date(row.timestamp).toLocaleTimeString() : '';
-
-    el.innerHTML = `<div><strong>${escapeHtml(row.username || 'Anonymous')}</strong><div style="margin-top:8px">${contentHtml}</div></div>
-                    <div class="meta"><span class="timestamp">${ts}</span></div>`;
-
-    // options for own messages
-    if(isMine){
-      const opts = document.createElement('div');
-      opts.className = 'options';
-      opts.textContent = '⋮';
-
-      const menu = document.createElement('div');
-      menu.className = 'options-menu';
-      const btnDelete = document.createElement('button');
-      btnDelete.textContent = 'Delete';
-      btnDelete.onclick = async (ev) => {
-        ev.stopPropagation();
-        const targetId = row.messageId || row.id;
-        // try delete via Supabase where id/messageId matches and user_pin equals local pin
-        const pinStored = localStorage.getItem('chatPinValue') || localStorage.getItem('chatPin') || null;
-        // We store user_pin in table column; if not present you'll need server-side logic; still attempt
-        try {
-          // try delete by id if numeric
-          const match = {};
-          if(row.id) match.id = row.id;
-          // delete only if user_pin matches (if you stored it)
-          if(pinStored) match.user_pin = pinStored;
-          const { error } = await supabase.from('messages').delete().match(match);
-          if(error){
-            // fallback: try delete by id only (if RLS allows)
-            const { error: err2 } = await supabase.from('messages').delete().match({ id: row.id });
-            if(err2) throw err2;
-          }
-        } catch(err){
-          console.error('Delete failed', err);
-          alert('Delete failed (check RLS & user_pin).');
-          return;
-        }
-        // optimistic update
-        const elNode = chatDiv.querySelector(`[data-id="${targetId}"]`);
-        if(elNode) elNode.innerHTML = `<em style="color:#666">Message deleted</em>`;
-        menu.style.display = 'none';
-      };
-      menu.appendChild(btnDelete);
-
-      opts.onclick = (ev) => {
-        ev.stopPropagation();
-        menu.style.display = (menu.style.display === 'block') ? 'none' : 'block';
-      };
-
-      el.appendChild(opts);
-      el.appendChild(menu);
+    function showChat(){
+      document.getElementById("loginScreen").style.display = "none";
+      document.getElementById("chatScreen").style.display = "flex";
     }
 
-    // animation: start hidden then show
-    el.classList.add('enter');
-    chatDiv.appendChild(el);
-    // force layout then show
-    requestAnimationFrame(()=> {
-      el.classList.add('show');
-      el.classList.remove('enter');
-    });
-    // scroll to bottom
-    chatDiv.scrollTop = chatDiv.scrollHeight;
-  }
-
-  // ---------- sending ----------
-  sendBtn.addEventListener('click', publish);
-  messageInput.addEventListener('keydown', e=>{
-    if(e.key === 'Enter' && !e.shiftKey){
-      e.preventDefault();
-      publish();
+    async function loadMessages(){
+      const res = await fetch(`${API_BASE}/messages`);
+      const data = await res.json();
+      document.getElementById("messages").innerHTML = "";
+      data.forEach(msg => renderMessage(msg));
+      scrollToBottom();
     }
-  });
 
-  async function publish(){
-    const name = (usernameInput.value || '').trim();
-    const txt = (messageInput.value || '').trim();
-    if(!name || !txt) return alert('Add display name and message');
-    // save name locally
-    localStorage.setItem('username', name);
-
-    // attach pin value (user may want to store a device-level PIN for deletes)
-    // store a separate pin value used to match deletion if desired
-    const pinVal = localStorage.getItem('chatPinValue') || localStorage.getItem('chatPin') || COMMON_PIN;
-    // attempt to write message: we write content in 'content' column
-    const payload = {
-      username: name,
-      content: txt,
-      created_at: new Date().toISOString(),
-      user_pin: pinVal,
-      // messageId helps cross-client deletion; include a unique token
-      messageId: `${Date.now()}-${Math.random().toString(36).slice(2,9)}`
-    };
-    try {
-      const { error } = await supabase.from('messages').insert(payload);
-      if(error) throw error;
-      messageInput.value = '';
-    } catch(err){
-      console.error('Insert error', err);
-      alert('Failed to send message.');
+    function renderMessage(msg){
+      const div = document.createElement("div");
+      div.classList.add("message");
+      div.classList.add(msg.username === currentUser.username ? "myMessage" : "otherMessage");
+      div.innerHTML = `
+        <span>${msg.content}</span>
+        ${msg.username === currentUser.username ? `
+          <span class="menu" onclick="toggleDelete(this)">⋮</span>
+          <button class="deleteBtn" onclick="deleteMessage(${msg.id}, this)">Delete</button>
+        ` : ""}
+      `;
+      document.getElementById("messages").appendChild(div);
     }
-  }
 
-  // ---------- local data delete ----------
-  deleteLocalDataBtn.addEventListener('click', () => {
-    localStorage.removeItem('chatPin');
-    localStorage.removeItem('chatPinValue');
-    localStorage.removeItem('username');
-    alert('Local data removed. Refresh to re-enter PIN/username.');
-    location.reload();
-  });
+    function toggleDelete(el){
+      el.parentElement.classList.toggle("showDelete");
+    }
 
-  // enable inputs if username saved
-  if(localStorage.getItem('username')){
-    usernameInput.value = localStorage.getItem('username');
-    messageInput.disabled = false; sendBtn.disabled = false;
-  }
+    async function deleteMessage(id, btn){
+      await fetch(`${API_BASE}/messages/${id}`, { method: "DELETE" });
+      btn.parentElement.remove();
+    }
 
-})(); // end IIFE
-</script>
+    async function sendMessage(){
+      const input = document.getElementById("messageInput");
+      const content = input.value.trim();
+      if(!content) return;
+      input.value = "";
+      const res = await fetch(`${API_BASE}/send`, {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({ username: currentUser.username, content })
+      });
+      const msg = await res.json();
+      renderMessage(msg);
+      scrollToBottom();
+    }
+
+    function scrollToBottom(){
+      const m = document.getElementById("messages");
+      m.scrollTop = m.scrollHeight;
+    }
+
+    // Auto-refresh every 2s
+    setInterval(loadMessages, 2000);
+  </script>
 </body>
 </html>
