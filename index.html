@@ -2,249 +2,302 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Android-Style Chat</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chat App</title>
 <style>
 body {
   margin: 0;
   font-family: "Roboto", sans-serif;
   background: #f5f5f5;
   display: flex;
-  flex-direction: column;
-  height: 100vh;
-}
-#loginScreen {
-  display: flex;
-  flex-direction: column;
   justify-content: center;
   align-items: center;
-  flex: 1;
-  background: linear-gradient(135deg, #4caf50, #2e7d32);
-  color: white;
+  height: 100vh;
 }
-#loginScreen input {
-  padding: 12px;
-  border: none;
-  border-radius: 12px;
-  margin: 10px;
-  width: 240px;
-  font-size: 16px;
-}
-#loginScreen button {
-  background: white;
-  color: #2e7d32;
-  border: none;
-  padding: 12px 20px;
-  border-radius: 20px;
-  cursor: pointer;
-  font-weight: bold;
-}
-#chatScreen {
-  display: none;
-  flex-direction: column;
-  height: 100%;
-}
-header {
-  background: #2e7d32;
-  color: white;
-  padding: 15px;
-  font-size: 18px;
-  font-weight: bold;
+
+.chat-container {
+  width: 100%;
+  max-width: 500px;
+  height: 90vh;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+  background: #ffffff;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.2);
 }
-#messages {
+
+/* Chat messages */
+#chat {
   flex: 1;
   overflow-y: auto;
-  padding: 15px;
   display: flex;
   flex-direction: column;
+  padding: 16px;
   gap: 12px;
-  background: #fafafa;
+  background: #e5ddd5;
 }
+
 .message {
   max-width: 70%;
-  padding: 12px 15px;
-  border-radius: 18px;
+  padding: 12px 16px;
+  border-radius: 16px;
   font-size: 15px;
-  animation: slideUp 0.25s ease;
+  line-height: 1.4;
   position: relative;
   word-wrap: break-word;
-  transition: all 0.2s ease;
+  animation: slideUp 0.25s ease;
 }
-.myMessage {
+
+.message.myMessage {
   align-self: flex-end;
-  background: #4caf50;
-  color: white;
+  background: #dcf8c6;
   border-bottom-right-radius: 4px;
 }
-.otherMessage {
+
+.message.otherMessage {
   align-self: flex-start;
-  background: #e0e0e0;
-  color: black;
+  background: #fff;
   border-bottom-left-radius: 4px;
 }
-.message .menu {
+
+.message img {
+  max-width: 250px;
+  border-radius: 12px;
+  margin-top: 6px;
+  display: block;
+}
+
+.timestamp {
+  font-size: 11px;
+  color: #888;
+  margin-top: 4px;
+  text-align: right;
+}
+
+/* Delete menu */
+.options {
   position: absolute;
   top: 6px;
   right: 8px;
+  font-weight: bold;
   cursor: pointer;
-  font-size: 14px;
-  color: rgba(255,255,255,0.7);
+  color: #555;
 }
-.otherMessage .menu {
-  color: rgba(0,0,0,0.5);
-}
-.deleteBtn {
-  background: transparent;
-  border: none;
-  color: red;
-  cursor: pointer;
-  font-size: 13px;
-  margin-top: 4px;
+
+.options-menu {
+  position: absolute;
+  top: 24px;
+  right: 8px;
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
   display: none;
+  z-index: 10;
 }
-.message.showDelete .deleteBtn {
-  display: block;
+
+.options-menu button {
+  background: none;
+  border: none;
+  padding: 6px 12px;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
 }
+
+.options-menu button:hover {
+  background: #eee;
+}
+
+/* Footer */
 footer {
   display: flex;
-  padding: 12px;
-  background: #fff;
+  padding: 10px;
   border-top: 1px solid #ddd;
+  background: #fff;
 }
+
 footer input {
   flex: 1;
-  padding: 12px;
+  padding: 12px 16px;
   border-radius: 24px;
   border: 1px solid #ccc;
-  margin-right: 10px;
-  outline: none;
   font-size: 15px;
+  outline: none;
 }
+
 footer button {
-  background: #4caf50;
-  border: none;
-  border-radius: 50%;
   width: 48px;
   height: 48px;
+  border-radius: 50%;
+  border: none;
+  background: #4caf50;
   color: white;
   font-size: 20px;
+  margin-left: 10px;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* PIN overlay */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
   display: flex;
   justify-content: center;
   align-items: center;
+  z-index: 100;
 }
+
+.pin-box {
+  background: white;
+  padding: 30px;
+  border-radius: 16px;
+  text-align: center;
+  width: 90%;
+  max-width: 300px;
+}
+
+.pin-box input {
+  width: 100%;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid #ccc;
+  margin-bottom: 15px;
+  font-size: 16px;
+  text-align: center;
+}
+
+.pin-box button {
+  background: #4caf50;
+  border: none;
+  color: white;
+  padding: 12px 20px;
+  border-radius: 20px;
+  cursor: pointer;
+}
+
+/* Animations */
 @keyframes slideUp {
-  from {opacity:0; transform: translateY(10px);}
-  to {opacity:1; transform: translateY(0);}
+  from { opacity: 0; transform: translateY(10px);}
+  to { opacity: 1; transform: translateY(0);}
 }
 </style>
 </head>
 <body>
-<div id="loginScreen">
-  <h2>Enter Chat</h2>
-  <input type="text" id="username" placeholder="Choose a display name">
-  <input type="password" id="pin" placeholder="Enter PIN">
-  <button onclick="login()">Enter</button>
+
+<!-- PIN overlay -->
+<div class="overlay" id="pinOverlay">
+  <div class="pin-box">
+    <h2>Enter PIN</h2>
+    <input type="password" id="pinInput" placeholder="Enter PIN">
+    <button id="pinBtn">Continue</button>
+  </div>
 </div>
 
-<div id="chatScreen">
-  <header>
-    <span>Chat</span>
-    <button onclick="logout()" style="background:none;border:none;color:white;font-size:14px;cursor:pointer;">Sign out</button>
-  </header>
-  <div id="messages"></div>
+<div class="chat-container" id="chatApp" style="display:none;">
+  <div id="chat"></div>
   <footer>
     <input type="text" id="messageInput" placeholder="Type a message...">
-    <button onclick="sendMessage()">➤</button>
+    <button id="sendBtn">➤</button>
   </footer>
 </div>
 
+<audio id="newMessageSound" src="https://www.soundjay.com/button/sounds/button-3.mp3" preload="auto"></audio>
+<script src="https://cdn.ably.com/lib/ably.min-1.js"></script>
 <script>
-const API_BASE = "http://localhost:3000/api"; // your backend endpoint
+const PIN_CODE = "5432"; // hidden PIN
+const ably = new Ably.Realtime('Vtd4-A.9jmIFA:umDML_i9STQP4BIH_u2Jon5BlkxuiK36w37FVrkhEl4');
+const channel = ably.channels.get('chat');
+
+const pinOverlay = document.getElementById('pinOverlay');
+const pinInput = document.getElementById('pinInput');
+const pinBtn = document.getElementById('pinBtn');
+const chatApp = document.getElementById('chatApp');
+const messageInput = document.getElementById('messageInput');
+const sendBtn = document.getElementById('sendBtn');
+const chatDiv = document.getElementById('chat');
+const newMessageSound = document.getElementById('newMessageSound');
+
 let currentUser = null;
 
-if(localStorage.getItem("chatUser")){
-  currentUser = JSON.parse(localStorage.getItem("chatUser"));
-  showChat();
-  loadMessages();
-}
+// PIN check
+pinBtn.addEventListener('click', () => {
+  if(pinInput.value.trim() === PIN_CODE){
+    pinOverlay.style.display = 'none';
+    chatApp.style.display = 'flex';
+    currentUser = prompt("Enter your username:") || "Anonymous";
+  } else alert("Wrong PIN");
+});
 
-function login(){
-  const username = document.getElementById("username").value.trim();
-  const pin = document.getElementById("pin").value.trim();
-  if(pin !== "5432") return alert("Wrong PIN");
-  if(!username) return alert("Enter a name");
-  currentUser = { username };
-  localStorage.setItem("chatUser", JSON.stringify(currentUser));
-  showChat();
-  loadMessages();
-}
-
-function logout(){
-  localStorage.removeItem("chatUser");
-  location.reload();
-}
-
-function showChat(){
-  document.getElementById("loginScreen").style.display = "none";
-  document.getElementById("chatScreen").style.display = "flex";
-}
-
-async function loadMessages(){
-  try{
-    const res = await fetch(`${API_BASE}/messages`);
-    const data = await res.json();
-    const container = document.getElementById("messages");
-    container.innerHTML = "";
-    data.sort((a,b)=>a.sent_at-b.sent_at).forEach(renderMessage);
-    container.scrollTop = container.scrollHeight;
-  }catch(e){console.error(e);}
-}
-
-function renderMessage(msg){
-  const div = document.createElement("div");
-  div.classList.add("message", msg.username===currentUser.username ? "myMessage":"otherMessage");
-  div.dataset.id = msg.id;
-  div.innerHTML = `<span>${msg.content}</span>`;
-  if(msg.username===currentUser.username){
-    div.innerHTML += `
-      <span class="menu" onclick="toggleDelete(this)">⋮</span>
-      <button class="deleteBtn" onclick="deleteMessage(${msg.id}, this)">Delete</button>
-    `;
+// Display message
+function displayMessage({username, message, id, deleted}){
+  const div = document.querySelector(`[data-id="${id}"]`);
+  if(deleted && div){
+    div.innerHTML = "<em>Message deleted</em>";
+    return;
   }
-  document.getElementById("messages").appendChild(div);
-  document.getElementById("messages").scrollTop = document.getElementById("messages").scrollHeight;
+  const msgEl = document.createElement('div');
+  msgEl.className = "message " + (username===currentUser ? "myMessage":"otherMessage");
+  msgEl.dataset.id = id;
+
+  let content = message;
+  if(message.match(/^https?:\/\/.*\.(jpg|jpeg|png|gif|webp)$/i)){
+    content = `<img src="${message}">`;
+  } else if(message.match(/^https?:\/\//i)){
+    content = `<a href="${message}" target="_blank">${message}</a>`;
+  }
+
+  msgEl.innerHTML = `<div>${username}: ${content}</div>`;
+
+  if(username===currentUser){
+    const options = document.createElement('div');
+    options.className = 'options';
+    options.textContent = '⋮';
+    const menu = document.createElement('div');
+    menu.className = 'options-menu';
+    const delBtn = document.createElement('button');
+    delBtn.textContent = "Delete";
+    delBtn.onclick = () => { channel.publish('message', JSON.stringify({id, deleted:true})); menu.style.display="none"; };
+    menu.appendChild(delBtn);
+    options.onclick = () => { menu.style.display = menu.style.display==='block'?"none":"block"; };
+    msgEl.appendChild(options);
+    msgEl.appendChild(menu);
+  }
+
+  chatDiv.appendChild(msgEl);
+  chatDiv.scrollTop = chatDiv.scrollHeight;
 }
 
-function toggleDelete(el){
-  el.parentElement.classList.toggle("showDelete");
-}
+// Load history
+channel.history({limit: 100, direction:'forwards'}, (err, resultPage) => {
+  if(err) return console.error(err);
+  resultPage.items.forEach(item => displayMessage(JSON.parse(item.data)));
+});
 
-async function deleteMessage(id, btn){
-  await fetch(`${API_BASE}/messages/${id}`, { method:"DELETE" });
-  btn.parentElement.remove();
-}
+// Subscribe to live updates
+channel.subscribe('message', msg => displayMessage(JSON.parse(msg.data)));
 
-async function sendMessage(){
-  const input = document.getElementById("messageInput");
-  const content = input.value.trim();
-  if(!content) return;
-  input.value = "";
-  try{
-    const res = await fetch(`${API_BASE}/send`, {
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body: JSON.stringify({ username: currentUser.username, content })
-    });
-    const msg = await res.json();
-    renderMessage(msg);
-  }catch(e){console.error(e);}
-}
+// Send message
+sendBtn.addEventListener('click', () => {
+  const msg = messageInput.value.trim();
+  if(!msg || !currentUser) return;
+  const id = Date.now() + '-' + Math.random();
+  const data = {id, username: currentUser, message: msg};
+  channel.publish('message', JSON.stringify(data));
+  messageInput.value = '';
+});
 
-// Auto-refresh every 2s
-setInterval(loadMessages, 2000);
+messageInput.addEventListener('keypress', e=>{
+  if(e.key==='Enter' && !e.shiftKey){
+    e.preventDefault();
+    sendBtn.click();
+  }
+});
 </script>
 </body>
 </html>
