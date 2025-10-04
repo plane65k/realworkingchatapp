@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Chat App</title>
+<title>Android-Style Chat</title>
 <style>
 body {
   margin: 0;
@@ -70,6 +70,7 @@ header {
   animation: slideUp 0.25s ease;
   position: relative;
   word-wrap: break-word;
+  transition: all 0.2s ease;
 }
 .myMessage {
   align-self: flex-end;
@@ -161,7 +162,7 @@ footer button {
 </div>
 
 <script>
-const API_BASE = "http://localhost:3000/api"; // your backend
+const API_BASE = "http://localhost:3000/api"; // your backend endpoint
 let currentUser = null;
 
 if(localStorage.getItem("chatUser")){
@@ -197,7 +198,7 @@ async function loadMessages(){
     const data = await res.json();
     const container = document.getElementById("messages");
     container.innerHTML = "";
-    data.forEach(renderMessage);
+    data.sort((a,b)=>a.sent_at-b.sent_at).forEach(renderMessage);
     container.scrollTop = container.scrollHeight;
   }catch(e){console.error(e);}
 }
@@ -205,14 +206,16 @@ async function loadMessages(){
 function renderMessage(msg){
   const div = document.createElement("div");
   div.classList.add("message", msg.username===currentUser.username ? "myMessage":"otherMessage");
-  div.innerHTML = `
-    <span>${msg.content}</span>
-    ${msg.username===currentUser.username ? `
+  div.dataset.id = msg.id;
+  div.innerHTML = `<span>${msg.content}</span>`;
+  if(msg.username===currentUser.username){
+    div.innerHTML += `
       <span class="menu" onclick="toggleDelete(this)">⋮</span>
       <button class="deleteBtn" onclick="deleteMessage(${msg.id}, this)">Delete</button>
-    `:""}
-  `;
+    `;
+  }
   document.getElementById("messages").appendChild(div);
+  document.getElementById("messages").scrollTop = document.getElementById("messages").scrollHeight;
 }
 
 function toggleDelete(el){
@@ -237,7 +240,6 @@ async function sendMessage(){
     });
     const msg = await res.json();
     renderMessage(msg);
-    document.getElementById("messages").scrollTop = document.getElementById("messages").scrollHeight;
   }catch(e){console.error(e);}
 }
 
