@@ -19,7 +19,7 @@
   --message-other-background: #e0e0e0;
   --message-other-text: #000000;
   --overlay-background: rgba(0,0,0,0.4);
-  --transition-time: 0.35s;
+  --transition-time: 2s;
 }
 [data-theme="dark"] {
   --background-color: #1a1a1a;
@@ -38,48 +38,265 @@
 }
 
 *{box-sizing:border-box}
-html,body{height:100%;margin:0;font-family:Roboto,system-ui,-apple-system,"Segoe UI",Arial,sans-serif;background:var(--background-color);color:var(--text-color);display:flex;align-items:center;justify-content:center;transition:background-color var(--transition-time) ease,color var(--transition-time) ease;}
+html,body{
+  height:100%;
+  margin:0;
+  font-family:Roboto,system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
+  background:var(--background-color);
+  color:var(--text-color);
+  transition:background-color var(--transition-time) ease,color var(--transition-time) ease;
+  display: flex;
+  flex-direction: column;
+}
 
 /* PIN overlay */
-#pinOverlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:var(--overlay-background);z-index:100;}
-#pinBox{background:var(--card-background);padding:30px;border-radius:16px;width:320px;box-shadow:0 8px 30px var(--shadow-color)}
-#pinBox input{padding:12px;border-radius:12px;border:1px solid var(--border-color);width:100%;margin-bottom:10px;background:transparent;color:var(--text-color)}
-#pinBox button{background:var(--button-background);color:var(--button-text);padding:12px;border-radius:12px;border:0;width:100%;cursor:pointer;font-weight:700}
+#pinOverlay{
+  position:fixed;
+  inset:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:var(--overlay-background);
+  z-index:100;
+}
+#pinBox{
+  background:var(--card-background);
+  padding:30px;
+  border-radius:16px;
+  width:320px;
+  box-shadow:0 8px 30px var(--shadow-color)
+}
+#pinBox input{
+  padding:12px;
+  border-radius:12px;
+  border:1px solid var(--border-color);
+  width:100%;
+  margin-bottom:10px;
+  background:transparent;
+  color:var(--text-color)
+}
+#pinBox button{
+  background:var(--button-background);
+  color:var(--button-text);
+  padding:12px;
+  border-radius:12px;
+  border:0;
+  width:100%;
+  cursor:pointer;
+  font-weight:700
+}
 
 /* Chat App */
-#chatApp{display:none;width:95%;max-width:980px;height:88vh;background:var(--card-background);border-radius:12px;box-shadow:0 8px 30px var(--shadow-color);overflow:hidden;display:flex;flex-direction:column;transition:background-color var(--transition-time)}
-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--button-background);color:var(--button-text);font-weight:700}
-.header-actions{display:flex;gap:10px;align-items:center}
-.button-clear{background:none;border:none;color:var(--button-text);cursor:pointer;font-weight:600}
-#loading{display:none;padding:18px;align-items:center;justify-content:center}
-.loader{border:6px solid var(--secondary-background);border-top:6px solid var(--button-background);border-radius:50%;width:36px;height:36px;animation:spin 1s linear infinite}
+#chatApp{
+  display:none;
+  width:100%;
+  height:100vh;
+  background:var(--card-background);
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+  transition:background-color var(--transition-time)
+}
+header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:12px 16px;
+  background:var(--button-background);
+  color:var(--button-text);
+  font-weight:700;
+  flex-shrink: 0;
+}
+.header-actions{
+  display:flex;
+  gap:10px;
+  align-items:center
+}
+.button-clear{
+  background:none;
+  border:none;
+  color:var(--button-text);
+  cursor:pointer;
+  font-weight:600
+}
+#loading{
+  display:none;
+  padding:18px;
+  align-items:center;
+  justify-content:center;
+  flex-shrink: 0;
+}
+.loader{
+  border:6px solid var(--secondary-background);
+  border-top:6px solid var(--button-background);
+  border-radius:50%;
+  width:36px;
+  height:36px;
+  animation:spin 1s linear infinite
+}
 @keyframes spin{to{transform:rotate(360deg)}}
 
-#chat{flex:1;overflow:auto;padding:18px;display:flex;flex-direction:column;gap:12px;background:var(--secondary-background)}
-.message{max-width:72%;padding:12px 14px;border-radius:14px;font-size:14px;position:relative;word-break:break-word;transition:transform .18s,opacity .18s}
-.myMessage{align-self:flex-end;background:var(--message-my-background);color:var(--message-my-text);border-bottom-right-radius:6px}
-.otherMessage{align-self:flex-start;background:var(--message-other-background);color:var(--message-other-text);border-bottom-left-radius:6px}
-.timestamp{display:block;font-size:11px;color:var(--border-color);margin-top:6px}
-.options{position:absolute;top:6px;right:8px;cursor:pointer}
-.options-menu{position:absolute;top:26px;right:8px;background:var(--card-background);border:1px solid var(--border-color);border-radius:8px;padding:6px;display:none;box-shadow:0 8px 20px var(--shadow-color)}
-.options-menu button{display:block;background:none;border:none;padding:6px 10px;width:100%;text-align:left;cursor:pointer;color:var(--text-color);border-radius:6px}
-.options-menu button:hover{background:var(--secondary-background)}
+#chat{
+  flex:1;
+  overflow:auto;
+  padding:18px;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  background:var(--secondary-background)
+}
+.message{
+  max-width:72%;
+  padding:12px 14px;
+  border-radius:14px;
+  font-size:14px;
+  position:relative;
+  word-break:break-word;
+  transition:transform .18s,opacity .18s
+}
+.myMessage{
+  align-self:flex-end;
+  background:var(--message-my-background);
+  color:var(--message-my-text);
+  border-bottom-right-radius:6px
+}
+.otherMessage{
+  align-self:flex-start;
+  background:var(--message-other-background);
+  color:var(--message-other-text);
+  border-bottom-left-radius:6px
+}
+.timestamp{
+  display:block;
+  font-size:11px;
+  color:var(--border-color);
+  margin-top:6px
+}
+.options{
+  position:absolute;
+  top:6px;
+  right:8px;
+  cursor:pointer
+}
+.options-menu{
+  position:absolute;
+  top:26px;
+  right:8px;
+  background:var(--card-background);
+  border:1px solid var(--border-color);
+  border-radius:8px;
+  padding:6px;
+  display:none;
+  box-shadow:0 8px 20px var(--shadow-color)
+}
+.options-menu button{
+  display:block;
+  background:none;
+  border:none;
+  padding:6px 10px;
+  width:100%;
+  text-align:left;
+  cursor:pointer;
+  color:var(--text-color);
+  border-radius:6px
+}
+.options-menu button:hover{
+  background:var(--secondary-background)
+}
 
-footer{display:flex;padding:12px;border-top:1px solid var(--border-color);background:var(--card-background)}
-footer input{flex:1;padding:12px;border-radius:24px;border:1px solid var(--border-color);margin-right:10px;background:transparent;color:var(--text-color)}
-footer button{width:48px;height:48px;border-radius:50%;border:none;background:var(--button-background);color:var(--button-text);font-size:18px;cursor:pointer}
+footer{
+  display:flex;
+  padding:12px;
+  border-top:1px solid var(--border-color);
+  background:var(--card-background);
+  flex-shrink: 0;
+}
+footer input{
+  flex:1;
+  padding:12px;
+  border-radius:24px;
+  border:1px solid var(--border-color);
+  margin-right:10px;
+  background:transparent;
+  color:var(--text-color)
+}
+footer button{
+  width:48px;
+  height:48px;
+  border-radius:50%;
+  border:none;
+  background:var(--button-background);
+  color:var(--button-text);
+  font-size:18px;
+  cursor:pointer
+}
 
 /* Admin modal */
-.admin-panel-btn{background:rgba(255,255,255,0.12);border:none;color:var(--button-text);padding:8px 10px;border-radius:8px;cursor:pointer}
-.admin-modal{position:fixed;right:18px;top:18px;width:320px;background:var(--card-background);border:1px solid var(--border-color);box-shadow:0 12px 30px var(--shadow-color);border-radius:12px;padding:12px;z-index:120;display:none}
-.admin-modal h3{margin:0 0 8px 0}
-.control-row{display:flex;gap:8px;margin-bottom:8px}
-.control-row input, .control-row select{flex:1;padding:8px;border-radius:8px;border:1px solid var(--border-color);background:transparent;color:var(--text-color)}
-.control-row button{padding:8px 10px;border-radius:8px;border:0;background:var(--button-background);color:var(--button-text);cursor:pointer}
+.admin-panel-btn{
+  background:rgba(255,255,255,0.12);
+  border:none;
+  color:var(--button-text);
+  padding:8px 10px;
+  border-radius:8px;
+  cursor:pointer
+}
+.admin-modal{
+  position:fixed;
+  right:18px;
+  top:18px;
+  width:320px;
+  background:var(--card-background);
+  border:1px solid var(--border-color);
+  box-shadow:0 12px 30px var(--shadow-color);
+  border-radius:12px;
+  padding:12px;
+  z-index:120;
+  display:none
+}
+.admin-modal h3{
+  margin:0 0 8px 0
+}
+.control-row{
+  display:flex;
+  gap:8px;
+  margin-bottom:8px
+}
+.control-row input, .control-row select{
+  flex:1;
+  padding:8px;
+  border-radius:8px;
+  border:1px solid var(--border-color);
+  background:transparent;
+  color:var(--text-color)
+}
+.control-row button{
+  padding:8px 10px;
+  border-radius:8px;
+  border:0;
+  background:var(--button-background);
+  color:var(--button-text);
+  cursor:pointer
+}
 
 /* notification banner */
-.notify-banner{position:fixed;left:50%;transform:translateX(-50%);top:18px;background:linear-gradient(90deg,var(--button-background),#2e7d32);color:var(--button-text);padding:12px 18px;border-radius:999px;box-shadow:0 12px 30px var(--shadow-color);z-index:200;display:none;animation:bannerIn .35s ease}
-@keyframes bannerIn{from{opacity:0;transform:translate(-50%,-6px)}to{opacity:1;transform:translate(-50%,0)}}
+.notify-banner{
+  position:fixed;
+  left:50%;
+  transform:translateX(-50%);
+  top:18px;
+  background:linear-gradient(90deg,var(--button-background),#2e7d32);
+  color:var(--button-text);
+  padding:12px 18px;
+  border-radius:999px;
+  box-shadow:0 12px 30px var(--shadow-color);
+  z-index:200;
+  display:none;
+  animation:bannerIn .35s ease
+}
+@keyframes bannerIn{
+  from{opacity:0;transform:translate(-50%,-6px)}
+  to{opacity:1;transform:translate(-50%,0)}
+}
 
 a{color:#0a66c2;text-decoration:underline}
 </style>
