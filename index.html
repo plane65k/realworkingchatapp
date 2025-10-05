@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Chatify</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Chatify (Admin-enabled)</title>
 <style>
 :root {
   --background-color: #f5f5f5;
@@ -19,9 +19,8 @@
   --message-other-background: #e0e0e0;
   --message-other-text: #000000;
   --overlay-background: rgba(0,0,0,0.4);
-  --transition-time: 1.5s;
+  --transition-time: 0.35s;
 }
-
 [data-theme="dark"] {
   --background-color: #1a1a1a;
   --text-color: #ffffff;
@@ -38,425 +37,507 @@
   --overlay-background: rgba(255,255,255,0.2);
 }
 
-body {
-  margin: 0;
-  font-family: "Roboto", sans-serif;
-  background: var(--background-color);
-  color: var(--text-color);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-  transition: background-color var(--transition-time) ease, color var(--transition-time) ease;
-}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;font-family:Roboto,system-ui,-apple-system,"Segoe UI",Arial,sans-serif;background:var(--background-color);color:var(--text-color);display:flex;align-items:center;justify-content:center;transition:background-color var(--transition-time) ease,color var(--transition-time) ease;}
 
 /* PIN overlay */
-#pinOverlay {
-  position: fixed;
-  inset: 0;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background: var(--overlay-background);
-  z-index: 100;
-  transition: background-color var(--transition-time) ease;
-}
-#pinBox {
-  background: var(--card-background);
-  padding: 30px;
-  border-radius: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-  width: 300px;
-  box-shadow: 0 8px 30px var(--shadow-color);
-  transition: background-color var(--transition-time) ease, box-shadow var(--transition-time) ease;
-}
-#pinBox input {
-  padding: 12px;
-  border-radius: 12px;
-  border: 1px solid var(--border-color);
-  font-size: 16px;
-  background: var(--card-background);
-  color: var(--text-color);
-  transition: border-color var(--transition-time) ease, background-color var(--transition-time) ease, color var(--transition-time) ease;
-}
-#pinBox button {
-  background: var(--button-background);
-  color: var(--button-text);
-  border: none;
-  padding: 12px;
-  border-radius: 12px;
-  cursor: pointer;
-  font-weight: bold;
-  transition: background-color var(--transition-time) ease;
-}
+#pinOverlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:var(--overlay-background);z-index:100;}
+#pinBox{background:var(--card-background);padding:30px;border-radius:16px;width:320px;box-shadow:0 8px 30px var(--shadow-color)}
+#pinBox input{padding:12px;border-radius:12px;border:1px solid var(--border-color);width:100%;margin-bottom:10px;background:transparent;color:var(--text-color)}
+#pinBox button{background:var(--button-background);color:var(--button-text);padding:12px;border-radius:12px;border:0;width:100%;cursor:pointer;font-weight:700}
 
 /* Chat App */
-#chatApp {
-  display: none;
-  flex-direction: column;
-  height: 90vh;
-  width: 95%;
-  max-width: 900px;
-  background: var(--card-background);
-  border-radius: 16px;
-  box-shadow: 0 8px 30px var(--shadow-color);
-  overflow: hidden;
-  transition: background-color var(--transition-time) ease, box-shadow var(--transition-time) ease;
-}
-header {
-  background: var(--button-background);
-  color: var(--button-text);
-  padding: 15px;
-  font-size: 18px;
-  font-weight: bold;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  transition: background-color var(--transition-time) ease, color var(--transition-time) ease;
-}
-#chat {
-  flex: 1;
-  overflow-y: auto;
-  padding: 15px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  background: var(--secondary-background);
-  transition: background-color var(--transition-time) ease;
-}
-.message {
-  max-width: 70%;
-  padding: 12px 15px;
-  border-radius: 18px;
-  font-size: 15px;
-  position: relative;
-  word-wrap: break-word;
-  animation: slideUp 0.25s ease;
-  transition: background-color var(--transition-time) ease, color var(--transition-time) ease;
-}
-.myMessage { 
-  align-self: flex-end; 
-  background: var(--message-my-background); 
-  color: var(--message-my-text); 
-  border-bottom-right-radius: 4px; 
-}
-.otherMessage { 
-  align-self: flex-start; 
-  background: var(--message-other-background); 
-  color: var(--message-other-text); 
-  border-bottom-left-radius: 4px; 
-}
-.options { 
-  position: absolute; 
-  top: 6px; 
-  right: 8px; 
-  cursor: pointer; 
-  font-size: 14px; 
-  color: rgba(255,255,255,0.7); 
-}
-.options-menu {
-  position: absolute; 
-  top: 22px; 
-  right: 8px; 
-  background: var(--card-background); 
-  border: 1px solid var(--border-color); 
-  border-radius: 8px;
-  display: none; 
-  z-index: 10;
-  transition: background-color var(--transition-time) ease, border-color var(--transition-time) ease;
-}
-.options-menu button {
-  background: none; 
-  border: none; 
-  width: 100%; 
-  padding: 6px 12px; 
-  text-align: left; 
-  cursor: pointer;
-  color: var(--text-color);
-  transition: background-color var(--transition-time) ease, color var(--transition-time) ease;
-}
-.options-menu button:hover { 
-  background: var(--secondary-background); 
-}
+#chatApp{display:none;width:95%;max-width:980px;height:88vh;background:var(--card-background);border-radius:12px;box-shadow:0 8px 30px var(--shadow-color);overflow:hidden;display:flex;flex-direction:column;transition:background-color var(--transition-time)}
+header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--button-background);color:var(--button-text);font-weight:700}
+.header-actions{display:flex;gap:10px;align-items:center}
+.button-clear{background:none;border:none;color:var(--button-text);cursor:pointer;font-weight:600}
+#loading{display:none;padding:18px;align-items:center;justify-content:center}
+.loader{border:6px solid var(--secondary-background);border-top:6px solid var(--button-background);border-radius:50%;width:36px;height:36px;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
 
-footer {
-  display: flex;
-  padding: 12px;
-  background: var(--card-background);
-  border-top: 1px solid var(--border-color);
-  transition: background-color var(--transition-time) ease, border-color var(--transition-time) ease;
-}
-footer input {
-  flex: 1;
-  padding: 12px;
-  border-radius: 24px;
-  border: 1px solid var(--border-color);
-  margin-right: 10px;
-  outline: none;
-  font-size: 15px;
-  background: var(--card-background);
-  color: var(--text-color);
-  transition: border-color var(--transition-time) ease, background-color var(--transition-time) ease, color var(--transition-time) ease;
-}
-footer button {
-  background: var(--button-background);
-  border: none;
-  border-radius: 50%;
-  width: 48px;
-  height: 48px;
-  color: var(--button-text);
-  font-size: 20px;
-  cursor: pointer;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  transition: background-color var(--transition-time) ease;
-}
+#chat{flex:1;overflow:auto;padding:18px;display:flex;flex-direction:column;gap:12px;background:var(--secondary-background)}
+.message{max-width:72%;padding:12px 14px;border-radius:14px;font-size:14px;position:relative;word-break:break-word;transition:transform .18s,opacity .18s}
+.myMessage{align-self:flex-end;background:var(--message-my-background);color:var(--message-my-text);border-bottom-right-radius:6px}
+.otherMessage{align-self:flex-start;background:var(--message-other-background);color:var(--message-other-text);border-bottom-left-radius:6px}
+.timestamp{display:block;font-size:11px;color:var(--border-color);margin-top:6px}
+.options{position:absolute;top:6px;right:8px;cursor:pointer}
+.options-menu{position:absolute;top:26px;right:8px;background:var(--card-background);border:1px solid var(--border-color);border-radius:8px;padding:6px;display:none;box-shadow:0 8px 20px var(--shadow-color)}
+.options-menu button{display:block;background:none;border:none;padding:6px 10px;width:100%;text-align:left;cursor:pointer;color:var(--text-color);border-radius:6px}
+.options-menu button:hover{background:var(--secondary-background)}
 
-@keyframes slideUp { 
-  from { opacity: 0; transform: translateY(10px); } 
-  to { opacity: 1; transform: translateY(0); } 
-}
+footer{display:flex;padding:12px;border-top:1px solid var(--border-color);background:var(--card-background)}
+footer input{flex:1;padding:12px;border-radius:24px;border:1px solid var(--border-color);margin-right:10px;background:transparent;color:var(--text-color)}
+footer button{width:48px;height:48px;border-radius:50%;border:none;background:var(--button-background);color:var(--button-text);font-size:18px;cursor:pointer}
 
-/* Loading circle */
-#loading {
-  display: none;
-  justify-content: center;
-  align-items: center;
-  height: 100px;
-}
-.loader {
-  border: 6px solid var(--secondary-background);
-  border-top: 6px solid var(--button-background);
-  border-radius: 50%;
-  width: 40px;
-  height: 40px;
-  animation: spin 1s linear infinite;
-}
-@keyframes spin { 
-  0% { transform: rotate(0deg); } 
-  100% { transform: rotate(360deg); } 
-}
+/* Admin modal */
+.admin-panel-btn{background:rgba(255,255,255,0.12);border:none;color:var(--button-text);padding:8px 10px;border-radius:8px;cursor:pointer}
+.admin-modal{position:fixed;right:18px;top:18px;width:320px;background:var(--card-background);border:1px solid var(--border-color);box-shadow:0 12px 30px var(--shadow-color);border-radius:12px;padding:12px;z-index:120;display:none}
+.admin-modal h3{margin:0 0 8px 0}
+.control-row{display:flex;gap:8px;margin-bottom:8px}
+.control-row input, .control-row select{flex:1;padding:8px;border-radius:8px;border:1px solid var(--border-color);background:transparent;color:var(--text-color)}
+.control-row button{padding:8px 10px;border-radius:8px;border:0;background:var(--button-background);color:var(--button-text);cursor:pointer}
 
-.timestamp {
-  font-size: 10px;
-  color: var(--border-color);
-  margin-top: 2px;
-  transition: color var(--transition-time) ease;
-}
+/* notification banner */
+.notify-banner{position:fixed;left:50%;transform:translateX(-50%);top:18px;background:linear-gradient(90deg,var(--button-background),#2e7d32);color:var(--button-text);padding:12px 18px;border-radius:999px;box-shadow:0 12px 30px var(--shadow-color);z-index:200;display:none;animation:bannerIn .35s ease}
+@keyframes bannerIn{from{opacity:0;transform:translate(-50%,-6px)}to{opacity:1;transform:translate(-50%,0)}}
+
+a{color:#0a66c2;text-decoration:underline}
 </style>
 </head>
 <body>
 
 <!-- PIN overlay -->
-<div id="pinOverlay">
+<div id="pinOverlay" aria-hidden="false">
   <div id="pinBox">
-    <input type="text" id="usernameInput" placeholder="Enter username">
-    <input type="password" id="pinInput" placeholder="Enter PIN">
+    <input id="usernameInput" placeholder="Enter username" autocomplete="off" />
+    <input id="pinInput" placeholder="Enter PIN" type="password" autocomplete="current-password" />
     <button id="pinBtn">Enter Chat</button>
   </div>
 </div>
 
-<div id="chatApp">
+<div id="chatApp" aria-hidden="true">
   <header>
-    <span>Chatify</span>
-    <button onclick="toggleTheme()" style="background:none;border:none;color:var(--button-text);cursor:pointer;">Toggle Theme</button>
-    <button onclick="logout()" style="background:none;border:none;color:red;cursor:pointer;">Sign out</button>
+    <div>Chatify</div>
+    <div class="header-actions">
+      <button id="toggleThemeBtn" class="button-clear" title="Toggle theme">Toggle Theme</button>
+      <button id="adminBtn" class="admin-panel-btn" style="display:none">Admin</button>
+      <button id="signoutBtn" class="button-clear" title="Sign out" style="color:salmon">Sign out</button>
+    </div>
   </header>
+
   <div id="loading"><div class="loader"></div></div>
-  <div id="chat"></div>
+  <div id="chat" role="log" aria-live="polite"></div>
+
   <footer>
-    <input type="text" id="messageInput" placeholder="Type a message...">
+    <input id="messageInput" placeholder="Type a message..." />
     <button id="sendBtn">➤</button>
   </footer>
 </div>
 
+<!-- Admin modal -->
+<div id="adminModal" class="admin-modal" role="dialog" aria-hidden="true">
+  <h3>Admin Control Center</h3>
+  <div style="font-size:13px;margin-bottom:8px;color:var(--text-color)">Root controls</div>
+
+  <div class="control-row">
+    <input id="delId" placeholder="message id to delete" />
+    <button id="delByIdBtn">Delete</button>
+  </div>
+
+  <div class="control-row">
+    <button id="deleteAllBtn">Delete All Messages</button>
+  </div>
+
+  <div class="control-row">
+    <input id="editId" placeholder="message id to edit timestamp" />
+    <input id="editTimestamp" placeholder="new timestamp (e.g. 3:25 PM)" />
+    <button id="editTsBtn">Edit TS</button>
+  </div>
+
+  <div class="control-row">
+    <input id="banUserInput" placeholder="username to ban/unban" />
+    <button id="banBtn">Ban</button>
+    <button id="unbanBtn">Unban</button>
+  </div>
+
+  <div class="control-row">
+    <input id="notifyText" placeholder="notification text" />
+    <button id="notifyBtn">Notify</button>
+  </div>
+
+  <div style="font-size:12px;color:#6b7280;margin-top:8px">Admin user: <strong>root</strong> — Admin PIN: <strong>qwery</strong></div>
+</div>
+
+<div id="notifyBanner" class="notify-banner"></div>
+
 <audio id="newMessageSound" src="https://www.soundjay.com/button/sounds/button-3.mp3" preload="auto"></audio>
 <script src="https://cdn.ably.com/lib/ably.min-1.js"></script>
 <script>
-const PIN_CODE = "5432";
+/* ==== Config ==== */
+const ADMIN_USERNAME = 'root';
+const ADMIN_PIN = 'qwery';
+const PIN_CODE = '5432'; // regular pin
+
+/* ==== Ably ==== */
 const ably = new Ably.Realtime('Vtd4-A.9jmIFA:umDML_i9STQP4BIH_u2Jon5BlkxuiK36w37FVrkhEl4');
 const channel = ably.channels.get('chat');
 
+/* ==== Elements ==== */
 const pinOverlay = document.getElementById('pinOverlay');
 const usernameInput = document.getElementById('usernameInput');
 const pinInput = document.getElementById('pinInput');
 const pinBtn = document.getElementById('pinBtn');
 const chatApp = document.getElementById('chatApp');
 const chatDiv = document.getElementById('chat');
+const loadingDiv = document.getElementById('loading');
 const messageInput = document.getElementById('messageInput');
 const sendBtn = document.getElementById('sendBtn');
+const adminBtn = document.getElementById('adminBtn');
+const adminModal = document.getElementById('adminModal');
+const notifyBanner = document.getElementById('notifyBanner');
 const newMessageSound = document.getElementById('newMessageSound');
-const loadingDiv = document.getElementById('loading');
+const toggleThemeBtn = document.getElementById('toggleThemeBtn');
+const signoutBtn = document.getElementById('signoutBtn');
 
+/* Admin controls */
+const delIdInput = document.getElementById('delId');
+const delByIdBtn = document.getElementById('delByIdBtn');
+const deleteAllBtn = document.getElementById('deleteAllBtn');
+const editIdInput = document.getElementById('editId');
+const editTsInput = document.getElementById('editTimestamp');
+const editTsBtn = document.getElementById('editTsBtn');
+const banUserInput = document.getElementById('banUserInput');
+const banBtn = document.getElementById('banBtn');
+const unbanBtn = document.getElementById('unbanBtn');
+const notifyTextInput = document.getElementById('notifyText');
+const notifyBtn = document.getElementById('notifyBtn');
+
+/* ==== State ==== */
 let currentUser = null;
-let displayedMessages = new Set();
-let messages = []; // stored messages
+let messages = [];        // persisted master copy
+let displayed = new Set(); // ids rendered
+let bannedUsers = new Set();
+let isAdmin = false;
 
-// Load user & messages from localStorage
-if(localStorage.getItem("chatUser")){
-  currentUser = JSON.parse(localStorage.getItem("chatUser"));
-  pinOverlay.style.display = "none";
-  chatApp.style.display = "flex";
-  if(localStorage.getItem("chatMessages")){
-    messages = JSON.parse(localStorage.getItem("chatMessages"));
-    messages.forEach(msg=>displayMessage(msg,false));
-  }
-  loadHistory();
-}
-
-// PIN login
-pinBtn.addEventListener('click', ()=>{
-  const username = usernameInput.value.trim();
-  const pin = pinInput.value.trim();
-  if(!username || pin!==PIN_CODE) return;
-  currentUser = {username};
-  localStorage.setItem("chatUser", JSON.stringify(currentUser));
-  pinOverlay.style.display="none";
-  chatApp.style.display="flex";
-  if(localStorage.getItem("chatMessages")){
-    messages = JSON.parse(localStorage.getItem("chatMessages"));
-    messages.forEach(msg=>displayMessage(msg,false));
-  }
-  loadHistory();
+/* ==== Theme init ==== */
+const savedTheme = localStorage.getItem('theme');
+const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+document.documentElement.setAttribute('data-theme', savedTheme || (prefersDark ? 'dark' : 'light'));
+toggleThemeBtn.addEventListener('click', () => {
+  const cur = document.documentElement.getAttribute('data-theme');
+  const next = cur === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('theme', next);
 });
 
-function displayMessage({username,message,id,deleted,timestamp}, live=false){
-  if(displayedMessages.has(id)) return;
-  displayedMessages.add(id);
+/* ==== Persistence helpers ==== */
+function loadLocalState(){
+  try{ const raw = localStorage.getItem('chatMessages'); if(raw) messages = JSON.parse(raw); }catch(e){ messages = []; }
+  try{ const bu = localStorage.getItem('chatBanned'); if(bu) bannedUsers = new Set(JSON.parse(bu)); }catch(e){ bannedUsers = new Set(); }
+}
+function saveLocalState(){ localStorage.setItem('chatMessages', JSON.stringify(messages)); localStorage.setItem('chatBanned', JSON.stringify([...bannedUsers])); }
 
-  const msgEl = document.createElement('div');
-  msgEl.className = "message " + (username===currentUser.username ? "myMessage":"otherMessage");
-  msgEl.dataset.id = id;
+/* ==== Utilities ==== */
+function makeId(){ return Date.now() + "-" + Math.random().toString(36).slice(2,9); }
+function formatTS(ts){ return ts || new Date().toLocaleTimeString(); }
+function escapeHtml(s){ if(!s) return ''; return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;'); }
 
-  let content = deleted ? "<em>Message deleted</em>" : message;
-  if(!deleted && message.match(/^https?:\/\/.*\.(jpg|jpeg|png|gif|webp)$/i)){
-    content = `<img src="${message}">`;
-  } else if(!deleted && message.match(/^https?:\/\//i)){
-    content = `<a href="${message}" target="_blank">${message}</a>`;
-  }
+/* ==== Render ==== */
+function clearChatAndRenderAll(){
+  chatDiv.innerHTML = '';
+  displayed.clear();
+  for(const m of messages){ renderOneMessage(m,false); }
+  chatDiv.scrollTop = chatDiv.scrollHeight;
+}
+function renderOneMessage(msg, live=false){
+  if(displayed.has(msg.id)) return;
+  displayed.add(msg.id);
+  const isBanned = bannedUsers.has(msg.username);
+  const el = document.createElement('div');
+  el.className = 'message ' + (msg.username === (currentUser && currentUser.username) ? 'myMessage' : 'otherMessage');
+  el.dataset.id = msg.id;
 
-  msgEl.innerHTML = `<div>${username}: ${content}</div><div class="timestamp">${timestamp}</div>`;
+  const content = msg.deleted ? "<em>Message deleted</em>" :
+    (msg.message && msg.message.match(/^https?:\/\/.*\.(jpg|jpeg|png|gif|webp)$/i) ? `<img src="${escapeHtml(msg.message)}" style="max-width:260px;border-radius:8px" />` :
+      (msg.message && msg.message.match(/^https?:\/\//i) ? `<a href="${escapeHtml(msg.message)}" target="_blank" rel="noreferrer">${escapeHtml(msg.message)}</a>` :
+       escapeHtml(msg.message || '')));
 
-  // Delete option
-  if(username===currentUser.username && !deleted){
-    const options = document.createElement('div');
-    options.className='options';
-    options.textContent='⋮';
-    const menu=document.createElement('div');
-    menu.className='options-menu';
-    const delBtn=document.createElement('button');
-    delBtn.textContent="Delete";
-    delBtn.onclick=()=>{
-      const msgIndex = messages.findIndex(m=>m.id===id);
-      messages[msgIndex].deleted = true;
-      saveMessages();
-      channel.publish('message', JSON.stringify(messages[msgIndex]));
-      menu.style.display="none";
-      chatDiv.innerHTML="";
-      displayedMessages.clear();
-      messages.forEach(m=>displayMessage(m,false));
+  const bannedNote = isBanned ? `<div style="font-size:12px;color:#bf3b3b;margin-bottom:6px">[BANNED USER]</div>` : '';
+  el.innerHTML = `<div>${bannedNote}<strong>${escapeHtml(msg.username)}</strong>: ${content}</div><div class="timestamp">${escapeHtml(msg.timestamp || '')}</div>`;
+
+  // If admin or message owner, show options menu; admin can delete any message, owner can delete own
+  if((isAdmin) || (currentUser && msg.username === currentUser.username && !msg.deleted)){
+    const opt = document.createElement('div'); opt.className = 'options'; opt.textContent = '⋮';
+    const menu = document.createElement('div'); menu.className = 'options-menu';
+    // Delete action (admin or owner)
+    const delBtn = document.createElement('button'); delBtn.textContent = 'Delete';
+    delBtn.onclick = () => {
+      const idx = messages.findIndex(m=>m.id===msg.id);
+      if(idx>=0){ messages[idx].deleted = true; saveLocalState(); }
+      channel.publish('message', JSON.stringify({ ...msg, deleted:true }));
+      menu.style.display='none';
+      clearChatAndRenderAll();
     };
     menu.appendChild(delBtn);
-    options.onclick=()=>{menu.style.display=menu.style.display==='block'?"none":"block";};
-    msgEl.appendChild(options);
-    msgEl.appendChild(menu);
+    // If admin, edit timestamp and force-delete option
+    if(isAdmin){
+      const editBtn = document.createElement('button'); editBtn.textContent = 'Edit timestamp';
+      editBtn.onclick = () => {
+        const newTs = prompt('Enter new timestamp (e.g. 3:25 PM):', msg.timestamp || '');
+        if(newTs != null){
+          const idx = messages.findIndex(m=>m.id===msg.id);
+          if(idx>=0){ messages[idx].timestamp = newTs; saveLocalState(); }
+          channel.publish('message', JSON.stringify({ ...msg, timestamp:newTs }));
+          clearChatAndRenderAll();
+        }
+        menu.style.display='none';
+      };
+      menu.appendChild(editBtn);
+      const forceDelBtn = document.createElement('button'); forceDelBtn.textContent = 'Force delete (admin)';
+      forceDelBtn.onclick = () => {
+        if(!confirm('Confirm force delete this message for all users?')) return;
+        const idx = messages.findIndex(m=>m.id===msg.id);
+        if(idx>=0){ messages[idx].deleted = true; saveLocalState(); }
+        channel.publish('message', JSON.stringify({ ...msg, deleted:true }));
+        clearChatAndRenderAll();
+        menu.style.display='none';
+      };
+      menu.appendChild(forceDelBtn);
+    }
+    opt.onclick = ()=> menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+    el.appendChild(opt);
+    el.appendChild(menu);
   }
 
-  chatDiv.appendChild(msgEl);
-  chatDiv.scrollTop = chatDiv.scrollHeight;
-
-  if(live && username!==currentUser.username && !deleted){
-    if(message.includes("@"+currentUser.username)){
-      alert(`Mentioned: ${username}: ${message}`);
+  chatDiv.appendChild(el);
+  if(live && currentUser && msg.username !== currentUser.username && !msg.deleted){
+    // Only alert for live latest messages, mention logic included
+    if(msg.message && msg.message.includes('@' + currentUser.username)){
+      alert(`Mentioned: ${msg.username}: ${msg.message}`);
     } else {
-      alert(`New message from ${username}: ${message}`);
+      alert(`New message from ${msg.username}: ${msg.message}`);
     }
     newMessageSound.play();
   }
+  chatDiv.scrollTop = chatDiv.scrollHeight;
 }
 
-// Save to localStorage
-function saveMessages(){
-  localStorage.setItem("chatMessages", JSON.stringify(messages));
+/* ==== Load local state and initial render ==== */
+loadLocalState();
+if(localStorage.getItem('chatUser')){
+  currentUser = JSON.parse(localStorage.getItem('chatUser'));
+  // admin check saved
+  if(currentUser.username === ADMIN_USERNAME && localStorage.getItem('lastPin') === ADMIN_PIN){
+    isAdmin = true;
+    adminBtn.style.display = 'inline-block';
+  }
+  pinOverlay.style.display = 'none';
+  chatApp.style.display = 'flex';
+  if(messages.length) messages.forEach(m => renderOneMessage(m,false));
+  // merge remote
+  loadHistory();
 }
 
-// Load history from Ably
+/* ==== Ably history merge ==== */
 function loadHistory(){
-  loadingDiv.style.display="flex";
-  channel.history({limit:200,direction:'forwards'}, (err,resultPage)=>{
-    loadingDiv.style.display="none";
-    if(err) return console.error(err);
-    resultPage.items.forEach(item=>{
-      const msg = JSON.parse(item.data);
-      if(!messages.some(m=>m.id===msg.id)){
-        messages.push(msg);
-        displayMessage(msg,false);
-      }
-    });
-    saveMessages();
+  loadingDiv.style.display = 'flex';
+  channel.history({ limit: 500, direction: 'forwards' }, (err, page) => {
+    loadingDiv.style.display = 'none';
+    if(err){ console.error('history err',err); return; }
+    for(const item of page.items){
+      try{
+        const data = JSON.parse(item.data);
+        const idx = messages.findIndex(m=>m.id === data.id);
+        if(idx === -1){
+          messages.push(data);
+        } else {
+          messages[idx] = { ...messages[idx], ...data };
+        }
+      }catch(e){}
+    }
+    saveLocalState();
+    clearChatAndRenderAll();
   });
 }
 
-// Live subscription
-channel.subscribe('message', msg=>{
-  const data = JSON.parse(msg.data);
-  if(!messages.some(m=>m.id===data.id)){
-    messages.push(data);
-    displayMessage(data,true);
-    saveMessages();
-  } else {
-    const idx = messages.findIndex(m=>m.id===data.id);
-    messages[idx] = data;
-    chatDiv.innerHTML="";
-    displayedMessages.clear();
-    messages.forEach(m=>displayMessage(m,false));
-  }
+/* ==== Live subscription ==== */
+channel.subscribe('message', msg => {
+  try{
+    const data = JSON.parse(msg.data);
+    // system ban
+    if(data.system === 'ban' && data.target){
+      bannedUsers.add(data.target);
+      saveLocalState();
+      clearChatAndRenderAll();
+      return;
+    }
+    if(data.system === 'unban' && data.target){
+      bannedUsers.delete(data.target);
+      saveLocalState();
+      clearChatAndRenderAll();
+      return;
+    }
+    if(data.system === 'notify' && data.text){
+      showNotifyBanner(data.text);
+      return;
+    }
+
+    const idx = messages.findIndex(m=>m.id === data.id);
+    if(idx === -1){
+      messages.push(data);
+      saveLocalState();
+      renderOneMessage(data,true);
+    } else {
+      messages[idx] = { ...messages[idx], ...data };
+      saveLocalState();
+      clearChatAndRenderAll();
+    }
+  }catch(e){ console.error(e); }
 });
 
-// Send message
-sendBtn.addEventListener('click', ()=>{
-  const msgText = messageInput.value.trim();
-  if(!msgText || !currentUser) return;
-  const id = Date.now() + "-" + Math.random();
-  const timestamp = new Date().toLocaleTimeString();
-  const msgObj = {id, username:currentUser.username, message:msgText, timestamp, deleted:false};
+/* ==== Send message ==== */
+sendBtn.addEventListener('click', sendMessage);
+messageInput.addEventListener('keypress', (e)=>{ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendMessage(); }});
+function sendMessage(){
+  const text = (messageInput.value || '').trim();
+  if(!text || !currentUser) return;
+  if(bannedUsers.has(currentUser.username)){
+    showNotifyBanner('You are banned from sending messages.');
+    return;
+  }
+  const id = makeId();
+  const ts = formatTS();
+  const msgObj = { id, username: currentUser.username, message: text, timestamp: ts, deleted: false };
   messages.push(msgObj);
-  displayMessage(msgObj,false);
-  saveMessages();
+  saveLocalState();
+  renderOneMessage(msgObj,false);
   channel.publish('message', JSON.stringify(msgObj));
-  messageInput.value="";
-});
-
-messageInput.addEventListener('keypress', e=>{
-  if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendBtn.click(); }
-});
-
-function logout(){
-  localStorage.removeItem("chatUser");
-  location.reload();
+  messageInput.value = '';
 }
 
-function toggleTheme() {
-  const currentTheme = document.documentElement.getAttribute('data-theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-  const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-  document.documentElement.setAttribute('data-theme', newTheme);
-  localStorage.setItem('theme', newTheme);
-}
-
-// Initialize theme based on saved preference or system preference
-const savedTheme = localStorage.getItem('theme');
-const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-document.documentElement.setAttribute('data-theme', savedTheme || (prefersDark ? 'dark' : 'light'));
-
-// Listen for system theme changes
-window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
-  if (!localStorage.getItem('theme')) {
-    document.documentElement.setAttribute('data-theme', e.matches ? 'dark' : 'light');
+/* ==== PIN login logic ==== */
+pinBtn.addEventListener('click', ()=> {
+  const username = (usernameInput.value || '').trim();
+  const pin = (pinInput.value || '').trim();
+  if(!username) return;
+  // set user
+  currentUser = { username };
+  localStorage.setItem('chatUser', JSON.stringify(currentUser));
+  // admin check
+  if(username === ADMIN_USERNAME && pin === ADMIN_PIN){
+    isAdmin = true;
+    adminBtn.style.display = 'inline-block';
+    localStorage.setItem('lastPin', ADMIN_PIN);
+  } else {
+    isAdmin = false;
+    adminBtn.style.display = 'none';
+    // save lastPin only for admin
+    localStorage.removeItem('lastPin');
   }
+  // regular pin check required to enter
+  const allowedPin = (username === ADMIN_USERNAME && pin === ADMIN_PIN) ? ADMIN_PIN : PIN_CODE;
+  if(pin !== allowedPin) {
+    alert('Wrong PIN'); // minimal feedback
+    // clear credentials saved if wrong
+    localStorage.removeItem('chatUser');
+    currentUser = null;
+    return;
+  }
+  // proceed
+  pinOverlay.style.display = 'none';
+  chatApp.style.display = 'flex';
+  // render local messages and merge
+  loadLocalState();
+  if(messages.length) clearChatAndRenderAll();
+  loadHistory();
+  // persist last admin pin (already set above)
 });
+
+/* ==== Admin modal toggle ==== */
+adminBtn.addEventListener('click', ()=> {
+  adminModal.style.display = adminModal.style.display === 'block' ? 'none' : 'block';
+  adminModal.setAttribute('aria-hidden', adminModal.style.display === 'none');
+});
+
+/* ==== Admin actions ==== */
+// delete by id
+delByIdBtn.addEventListener('click', ()=> {
+  if(!isAdmin) return;
+  const id = (delIdInput.value||'').trim();
+  if(!id) return showNotifyBanner('Provide id to delete.');
+  const idx = messages.findIndex(m=>m.id===id);
+  if(idx === -1) return showNotifyBanner('Message id not found.');
+  messages[idx].deleted = true;
+  saveLocalState();
+  channel.publish('message', JSON.stringify({ ...messages[idx], deleted:true }));
+  clearChatAndRenderAll();
+  showNotifyBanner('Message deleted.');
+});
+// delete all
+deleteAllBtn.addEventListener('click', ()=> {
+  if(!isAdmin) return;
+  if(!confirm('Confirm delete all messages for everyone?')) return;
+  for(const msg of messages){ msg.deleted = true; channel.publish('message', JSON.stringify({ ...msg, deleted:true })); }
+  saveLocalState();
+  clearChatAndRenderAll();
+  showNotifyBanner('All messages deleted.');
+});
+// edit timestamp
+editTsBtn.addEventListener('click', ()=> {
+  if(!isAdmin) return;
+  const id = (editIdInput.value||'').trim();
+  const newTs = (editTsInput.value||'').trim();
+  if(!id || !newTs) return showNotifyBanner('Provide id and new timestamp.');
+  const idx = messages.findIndex(m=>m.id===id);
+  if(idx === -1) return showNotifyBanner('Message id not found.');
+  messages[idx].timestamp = newTs;
+  saveLocalState();
+  channel.publish('message', JSON.stringify({ ...messages[idx], timestamp:newTs }));
+  clearChatAndRenderAll();
+  showNotifyBanner('Timestamp updated.');
+});
+// ban/unban
+banBtn.addEventListener('click', ()=> {
+  if(!isAdmin) return;
+  const t = (banUserInput.value||'').trim();
+  if(!t) return showNotifyBanner('Provide username to ban.');
+  bannedUsers.add(t);
+  saveLocalState();
+  channel.publish('message', JSON.stringify({ id: makeId(), system:'ban', target: t }));
+  clearChatAndRenderAll();
+  showNotifyBanner(`User ${t} banned.`);
+});
+unbanBtn.addEventListener('click', ()=> {
+  if(!isAdmin) return;
+  const t = (banUserInput.value||'').trim();
+  if(!t) return showNotifyBanner('Provide username to unban.');
+  bannedUsers.delete(t);
+  saveLocalState();
+  channel.publish('message', JSON.stringify({ id: makeId(), system:'unban', target: t }));
+  clearChatAndRenderAll();
+  showNotifyBanner(`User ${t} unbanned.`);
+});
+// notify
+notifyBtn.addEventListener('click', ()=> {
+  if(!isAdmin) return;
+  const txt = (notifyTextInput.value||'').trim();
+  if(!txt) return showNotifyBanner('Provide notification text.');
+  channel.publish('message', JSON.stringify({ id: makeId(), system:'notify', text: txt }));
+  showNotifyBanner('Notification sent.');
+});
+
+/* ==== Notifications (animated banner) ==== */
+let bannerTimer = null;
+function showNotifyBanner(text){
+  notifyBanner.textContent = text + ' — please refresh to update';
+  notifyBanner.style.display = 'block';
+  if(bannerTimer) clearTimeout(bannerTimer);
+  bannerTimer = setTimeout(()=> notifyBanner.style.display = 'none', 9000);
+}
+
+/* ==== Save/load helpers ==== */
+function loadLocalState(){
+  try{ const raw = localStorage.getItem('chatMessages'); if(raw) messages = JSON.parse(raw); }catch(e){ messages = []; }
+  try{ const bu = localStorage.getItem('chatBanned'); if(bu) bannedUsers = new Set(JSON.parse(bu)); }catch(e){ bannedUsers = new Set(); }
+}
+function saveLocalState(){ localStorage.setItem('chatMessages', JSON.stringify(messages)); localStorage.setItem('chatBanned', JSON.stringify([...bannedUsers])); }
+
+/* ==== Other UI controls ==== */
+signoutBtn.addEventListener('click', ()=> { localStorage.removeItem('chatUser'); localStorage.removeItem('lastPin'); location.reload(); });
+
+/* ==== Before unload: republish local messages as a gentle backup ==== */
+window.addEventListener('beforeunload', ()=> {
+  try{
+    for(const msg of messages){
+      channel.publish('message', JSON.stringify(msg));
+    }
+  }catch(e){}
+});
+
+/* ==== Utilities used earlier ==== */
+function makeId(){ return Date.now() + "-" + Math.random().toString(36).slice(2,9); }
+function formatTS(ts){ return ts || new Date().toLocaleTimeString(); }
+
 </script>
 </body>
 </html>
