@@ -508,12 +508,15 @@ function renderOneMessage(msg, live=false){
 
   chatDiv.appendChild(el);
   if(live && currentUser && msg.username !== currentUser.username && !msg.deleted){
-    // Only alert for live latest messages, mention logic included
-    if(msg.message && msg.message.includes('@' + currentUser.username)){
-      alert(`Mentioned: ${msg.username}: ${msg.message}`);
-    } else {
-      alert(`New message from ${msg.username}: ${msg.message}`);
+    // Only alert when the tab is not active (user is not viewing the chat)
+    if(document.hidden){
+      if(msg.message && msg.message.includes('@' + currentUser.username)){
+        alert(`Mentioned: ${msg.username}: ${msg.message}`);
+      } else {
+        alert(`New message from ${msg.username}: ${msg.message}`);
+      }
     }
+    // Always play sound for new messages
     newMessageSound.play();
   }
   chatDiv.scrollTop = chatDiv.scrollHeight;
