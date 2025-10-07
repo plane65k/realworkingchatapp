@@ -368,16 +368,21 @@ a{color:#0a66c2;text-decoration:underline}
 <div id="notifyBanner" class="notify-banner"></div>
 
 <audio id="newMessageSound" src="https://www.soundjay.com/button/sounds/button-3.mp3" preload="auto"></audio>
-<script src="https://cdn.ably.com/lib/ably.min-1.js"></script>
+<script src="https://cdn.pubnub.com/sdk/javascript/pubnub.7.4.2.min.js"></script>
 <script>
 /* ==== Config ==== */
 const ADMIN_USERNAME = 'root';
 const ADMIN_PIN = 'qwery';
 const PIN_CODE = '5432'; // regular pin
 
-/* ==== Ably ==== */
-const ably = new Ably.Realtime('Vtd4-A.9jmIFA:umDML_i9STQP4BIH_u2Jon5BlkxuiK36w37FVrkhEl4');
-const channel = ably.channels.get('chat');
+/* ==== PubNub Configuration ==== */
+const PUBLISH_KEY = 'pub-c-f10d7cca-b3fa-4e14-8a0a-e42b9c8c9dc1';
+const SUBSCRIBE_KEY = 'sub-c-ed7eb95d-9cfd-49af-b73b-af513120db38';
+const SECRET_KEY = 'sec-c-ODcyZTA5MzYtODVjYS00NTVmLTgzYmYtYmUwNDgzMzQ4ZWE3';
+const CHANNEL_NAME = 'chat-channel';
+
+/* ==== PubNub Instance ==== */
+let pubnub = null;
 
 /* ==== Elements ==== */
 const pinOverlay = document.getElementById('pinOverlay');
@@ -415,6 +420,12 @@ let messages = [];        // persisted master copy
 let displayed = new Set(); // ids rendered
 let bannedUsers = new Set();
 let isAdmin = false;
+let isTabActive = true;
+
+/* ==== Tab visibility detection ==== */
+document.addEventListener('visibilitychange', () => {
+  isTabActive = !document.hidden;
+});
 
 /* ==== Theme init ==== */
 const savedTheme = localStorage.getItem('theme');
@@ -471,7 +482,7 @@ function renderOneMessage(msg, live=false){
     delBtn.onclick = () => {
       const idx = messages.findIndex(m=>m.id===msg.id);
       if(idx>=0){ messages[idx].deleted = true; saveLocalState(); }
-      channel.publish('message', JSON.stringify({ ...msg, deleted:true }));
+      publishMessage({ ...msg, deleted:true });
       menu.style.display='none';
       clearChatAndRenderAll();
     };
@@ -484,7 +495,7 @@ function renderOneMessage(msg, live=false){
         if(newTs != null){
           const idx = messages.findIndex(m=>m.id===msg.id);
           if(idx>=0){ messages[idx].timestamp = newTs; saveLocalState(); }
-          channel.publish('message', JSON.stringify({ ...msg, timestamp:newTs }));
+          publishMessage({ ...msg, timestamp:newTs });
           clearChatAndRenderAll();
         }
         menu.style.display='none';
@@ -495,7 +506,7 @@ function renderOneMessage(msg, live=false){
         if(!confirm('Confirm force delete this message for all users?')) return;
         const idx = messages.findIndex(m=>m.id===msg.id);
         if(idx>=0){ messages[idx].deleted = true; saveLocalState(); }
-        channel.publish('message', JSON.stringify({ ...msg, deleted:true }));
+        publishMessage({ ...msg, deleted:true });
         clearChatAndRenderAll();
         menu.style.display='none';
       };
@@ -508,18 +519,121 @@ function renderOneMessage(msg, live=false){
 
   chatDiv.appendChild(el);
   if(live && currentUser && msg.username !== currentUser.username && !msg.deleted){
-    // Only alert when the tab is not active (user is not viewing the chat)
-    if(document.hidden){
+    // Only show notifications if tab is not active
+    if (!isTabActive) {
       if(msg.message && msg.message.includes('@' + currentUser.username)){
         alert(`Mentioned: ${msg.username}: ${msg.message}`);
       } else {
         alert(`New message from ${msg.username}: ${msg.message}`);
       }
+      newMessageSound.play();
     }
-    // Always play sound for new messages
-    newMessageSound.play();
   }
   chatDiv.scrollTop = chatDiv.scrollHeight;
+}
+
+/* ==== PubNub Functions ==== */
+function initializePubNub() {
+  pubnub = new PubNub({
+    publishKey: PUBLISH_KEY,
+    subscribeKey: SUBSCRIBE_KEY,
+    uuid: currentUser.username,
+    secretKey: isAdmin ? SECRET_KEY : undefined // Only admin gets secret key for admin operations
+  });
+
+  // Add listener
+  pubnub.addListener({
+    message: function(messageEvent) {
+      handleIncomingMessage(messageEvent.message);
+    },
+    status: function(statusEvent) {
+      if (statusEvent.category === "PNConnectedCategory") {
+        console.log("Connected to PubNub");
+      }
+    }
+  });
+
+  // Subscribe to channel
+  pubnub.subscribe({
+    channels: [CHANNEL_NAME]
+  });
+}
+
+function publishMessage(messageData) {
+  if (!pubnub) return;
+  
+  pubnub.publish({
+    channel: CHANNEL_NAME,
+    message: messageData
+  }, function(status, response) {
+    if (status.error) {
+      console.error("Publish failed:", status);
+      showNotifyBanner('Failed to send message');
+    }
+  });
+}
+
+function handleIncomingMessage(data) {
+  // Handle system messages
+  if(data.system === 'ban' && data.target){
+    bannedUsers.add(data.target);
+    saveLocalState();
+    clearChatAndRenderAll();
+    return;
+  }
+  if(data.system === 'unban' && data.target){
+    bannedUsers.delete(data.target);
+    saveLocalState();
+    clearChatAndRenderAll();
+    return;
+  }
+  if(data.system === 'notify' && data.text){
+    showNotifyBanner(data.text);
+    return;
+  }
+
+  const idx = messages.findIndex(m=>m.id === data.id);
+  if(idx === -1){
+    messages.push(data);
+    saveLocalState();
+    renderOneMessage(data,true);
+  } else {
+    messages[idx] = { ...messages[idx], ...data };
+    saveLocalState();
+    clearChatAndRenderAll();
+  }
+}
+
+/* ==== Load History from PubNub ==== */
+function loadHistory(){
+  loadingDiv.style.display = 'flex';
+  
+  pubnub.fetchMessages({
+    channels: [CHANNEL_NAME],
+    count: 100
+  }, (status, response) => {
+    loadingDiv.style.display = 'none';
+    
+    if (status.error) {
+      console.error('History fetch error:', status);
+      return;
+    }
+    
+    const channelMessages = response.channels[CHANNEL_NAME];
+    if (channelMessages) {
+      channelMessages.forEach(item => {
+        const data = item.message;
+        const idx = messages.findIndex(m=>m.id === data.id);
+        if(idx === -1){
+          messages.push(data);
+        } else {
+          messages[idx] = { ...messages[idx], ...data };
+        }
+      });
+      saveLocalState();
+      clearChatAndRenderAll();
+    }
+  });
 }
 
 /* ==== Load local state and initial render ==== */
@@ -533,67 +647,14 @@ if(localStorage.getItem('chatUser')){
   }
   pinOverlay.style.display = 'none';
   chatApp.style.display = 'flex';
+  
+  // Initialize PubNub after user is loaded
+  initializePubNub();
+  
   if(messages.length) messages.forEach(m => renderOneMessage(m,false));
-  // merge remote
-  loadHistory();
+  // Load history after PubNub is initialized
+  setTimeout(() => loadHistory(), 1000);
 }
-
-/* ==== Ably history merge ==== */
-function loadHistory(){
-  loadingDiv.style.display = 'flex';
-  channel.history({ limit: 500, direction: 'forwards' }, (err, page) => {
-    loadingDiv.style.display = 'none';
-    if(err){ console.error('history err',err); return; }
-    for(const item of page.items){
-      try{
-        const data = JSON.parse(item.data);
-        const idx = messages.findIndex(m=>m.id === data.id);
-        if(idx === -1){
-          messages.push(data);
-        } else {
-          messages[idx] = { ...messages[idx], ...data };
-        }
-      }catch(e){}
-    }
-    saveLocalState();
-    clearChatAndRenderAll();
-  });
-}
-
-/* ==== Live subscription ==== */
-channel.subscribe('message', msg => {
-  try{
-    const data = JSON.parse(msg.data);
-    // system ban
-    if(data.system === 'ban' && data.target){
-      bannedUsers.add(data.target);
-      saveLocalState();
-      clearChatAndRenderAll();
-      return;
-    }
-    if(data.system === 'unban' && data.target){
-      bannedUsers.delete(data.target);
-      saveLocalState();
-      clearChatAndRenderAll();
-      return;
-    }
-    if(data.system === 'notify' && data.text){
-      showNotifyBanner(data.text);
-      return;
-    }
-
-    const idx = messages.findIndex(m=>m.id === data.id);
-    if(idx === -1){
-      messages.push(data);
-      saveLocalState();
-      renderOneMessage(data,true);
-    } else {
-      messages[idx] = { ...messages[idx], ...data };
-      saveLocalState();
-      clearChatAndRenderAll();
-    }
-  }catch(e){ console.error(e); }
-});
 
 /* ==== Send message ==== */
 sendBtn.addEventListener('click', sendMessage);
@@ -611,7 +672,7 @@ function sendMessage(){
   messages.push(msgObj);
   saveLocalState();
   renderOneMessage(msgObj,false);
-  channel.publish('message', JSON.stringify(msgObj));
+  publishMessage(msgObj);
   messageInput.value = '';
 }
 
@@ -646,11 +707,12 @@ pinBtn.addEventListener('click', ()=> {
   // proceed
   pinOverlay.style.display = 'none';
   chatApp.style.display = 'flex';
-  // render local messages and merge
+  
+  // Initialize PubNub and load messages
+  initializePubNub();
   loadLocalState();
   if(messages.length) clearChatAndRenderAll();
-  loadHistory();
-  // persist last admin pin (already set above)
+  setTimeout(() => loadHistory(), 1000);
 });
 
 /* ==== Admin modal toggle ==== */
@@ -669,7 +731,7 @@ delByIdBtn.addEventListener('click', ()=> {
   if(idx === -1) return showNotifyBanner('Message id not found.');
   messages[idx].deleted = true;
   saveLocalState();
-  channel.publish('message', JSON.stringify({ ...messages[idx], deleted:true }));
+  publishMessage({ ...messages[idx], deleted:true });
   clearChatAndRenderAll();
   showNotifyBanner('Message deleted.');
 });
@@ -677,7 +739,10 @@ delByIdBtn.addEventListener('click', ()=> {
 deleteAllBtn.addEventListener('click', ()=> {
   if(!isAdmin) return;
   if(!confirm('Confirm delete all messages for everyone?')) return;
-  for(const msg of messages){ msg.deleted = true; channel.publish('message', JSON.stringify({ ...msg, deleted:true })); }
+  for(const msg of messages){ 
+    msg.deleted = true; 
+    publishMessage({ ...msg, deleted:true }); 
+  }
   saveLocalState();
   clearChatAndRenderAll();
   showNotifyBanner('All messages deleted.');
@@ -692,7 +757,7 @@ editTsBtn.addEventListener('click', ()=> {
   if(idx === -1) return showNotifyBanner('Message id not found.');
   messages[idx].timestamp = newTs;
   saveLocalState();
-  channel.publish('message', JSON.stringify({ ...messages[idx], timestamp:newTs }));
+  publishMessage({ ...messages[idx], timestamp:newTs });
   clearChatAndRenderAll();
   showNotifyBanner('Timestamp updated.');
 });
@@ -703,7 +768,7 @@ banBtn.addEventListener('click', ()=> {
   if(!t) return showNotifyBanner('Provide username to ban.');
   bannedUsers.add(t);
   saveLocalState();
-  channel.publish('message', JSON.stringify({ id: makeId(), system:'ban', target: t }));
+  publishMessage({ id: makeId(), system:'ban', target: t });
   clearChatAndRenderAll();
   showNotifyBanner(`User ${t} banned.`);
 });
@@ -713,7 +778,7 @@ unbanBtn.addEventListener('click', ()=> {
   if(!t) return showNotifyBanner('Provide username to unban.');
   bannedUsers.delete(t);
   saveLocalState();
-  channel.publish('message', JSON.stringify({ id: makeId(), system:'unban', target: t }));
+  publishMessage({ id: makeId(), system:'unban', target: t });
   clearChatAndRenderAll();
   showNotifyBanner(`User ${t} unbanned.`);
 });
@@ -722,7 +787,7 @@ notifyBtn.addEventListener('click', ()=> {
   if(!isAdmin) return;
   const txt = (notifyTextInput.value||'').trim();
   if(!txt) return showNotifyBanner('Provide notification text.');
-  channel.publish('message', JSON.stringify({ id: makeId(), system:'notify', text: txt }));
+  publishMessage({ id: makeId(), system:'notify', text: txt });
   showNotifyBanner('Notification sent.');
 });
 
@@ -735,28 +800,23 @@ function showNotifyBanner(text){
   bannerTimer = setTimeout(()=> notifyBanner.style.display = 'none', 9000);
 }
 
-/* ==== Save/load helpers ==== */
-function loadLocalState(){
-  try{ const raw = localStorage.getItem('chatMessages'); if(raw) messages = JSON.parse(raw); }catch(e){ messages = []; }
-  try{ const bu = localStorage.getItem('chatBanned'); if(bu) bannedUsers = new Set(JSON.parse(bu)); }catch(e){ bannedUsers = new Set(); }
-}
-function saveLocalState(){ localStorage.setItem('chatMessages', JSON.stringify(messages)); localStorage.setItem('chatBanned', JSON.stringify([...bannedUsers])); }
-
 /* ==== Other UI controls ==== */
-signoutBtn.addEventListener('click', ()=> { localStorage.removeItem('chatUser'); localStorage.removeItem('lastPin'); location.reload(); });
-
-/* ==== Before unload: republish local messages as a gentle backup ==== */
-window.addEventListener('beforeunload', ()=> {
-  try{
-    for(const msg of messages){
-      channel.publish('message', JSON.stringify(msg));
-    }
-  }catch(e){}
+signoutBtn.addEventListener('click', ()=> { 
+  if (pubnub) {
+    pubnub.unsubscribeAll();
+    pubnub.stop();
+  }
+  localStorage.removeItem('chatUser'); 
+  localStorage.removeItem('lastPin'); 
+  location.reload(); 
 });
 
-/* ==== Utilities used earlier ==== */
-function makeId(){ return Date.now() + "-" + Math.random().toString(36).slice(2,9); }
-function formatTS(ts){ return ts || new Date().toLocaleTimeString(); }
+/* ==== Before unload: cleanup ==== */
+window.addEventListener('beforeunload', ()=> {
+  if (pubnub) {
+    pubnub.unsubscribeAll();
+  }
+});
 
 </script>
 </body>
