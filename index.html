@@ -4,6 +4,8 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Chatify</title>
+<!-- Supabase SDK -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.44.0/dist/umd/supabase.min.js"></script>
 <style>
 :root {
   --background-color: #f5f5f5;
@@ -368,21 +370,20 @@ a{color:#0a66c2;text-decoration:underline}
 <div id="notifyBanner" class="notify-banner"></div>
 
 <audio id="newMessageSound" src="https://www.soundjay.com/button/sounds/button-3.mp3" preload="auto"></audio>
-<script src="https://cdn.pubnub.com/sdk/javascript/pubnub.7.4.2.min.js"></script>
 <script>
 /* ==== Config ==== */
 const ADMIN_USERNAME = 'root';
 const ADMIN_PIN = 'qwery';
 const PIN_CODE = '5432'; // regular pin
 
-/* ==== PubNub Configuration ==== */
-const PUBLISH_KEY = 'pub-c-f10d7cca-b3fa-4e14-8a0a-e42b9c8c9dc1';
-const SUBSCRIBE_KEY = 'sub-c-ed7eb95d-9cfd-49af-b73b-af513120db38';
-const SECRET_KEY = 'sec-c-ODcyZTA5MzYtODVjYS00NTVmLTgzYmYtYmUwNDgzMzQ4ZWE3';
-const CHANNEL_NAME = 'chat-channel';
+/* ==== Supabase Configuration ==== */
+const SUPABASE_URL = "https://kqbylnsogapepslmxtwv.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtxYnlsbnNvZ2FwZXBzbG14dHd2Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MDYzNDkwMywiZXhwIjoyMDc2MjEwOTAzfQ.wCMSO-UuZtBbpJzEUKx8nz5MGtnx7aJBWEIozC9a6dM";
+const TABLE = "messages"; // public.messages
 
-/* ==== PubNub Instance ==== */
-let pubnub = null;
+/* ==== Supabase Instance ==== */
+let supabase = null;
+let realtimeSubscription = null;
 
 /* ==== Elements ==== */
 const pinOverlay = document.getElementById('pinOverlay');
@@ -421,6 +422,7 @@ let displayed = new Set(); // ids rendered
 let bannedUsers = new Set();
 let isAdmin = false;
 let isTabActive = true;
+let workingColumn = null; // for dynamic column detection
 
 /* ==== Tab visibility detection ==== */
 document.addEventListener('visibilitychange', () => {
@@ -449,6 +451,68 @@ function saveLocalState(){ localStorage.setItem('chatMessages', JSON.stringify(m
 function makeId(){ return Date.now() + "-" + Math.random().toString(36).slice(2,9); }
 function formatTS(ts){ return ts || new Date().toLocaleTimeString(); }
 function escapeHtml(s){ if(!s) return ''; return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;'); }
+
+/* ==== Supabase Column Detection Logic ==== */
+async function tryInsertColumn(colName, row) {
+  try {
+    const r = await supabase
+      .from(TABLE)
+      .insert([row])
+      .select(); // select returns inserted row for verification
+    if (r.error) {
+      return { ok: false, error: r.error };
+    }
+    return { ok:true, data: r.data };
+  } catch (e) {
+    return { ok:false, error: e };
+  }
+}
+
+async function determineColumnAndSend(username, text) {
+  const candidates = ['content','message','text'];
+  // if we already discovered workingColumn, use it
+  if (workingColumn) {
+    return await insertWithColumn(workingColumn, username, text);
+  }
+  // else try each candidate but safely: use limit 1 test insert then delete it
+  for (const col of candidates) {
+    console.log(`Trying insert with column "${col}"...`);
+    const row = { username, [col]: text };
+    const res = await tryInsertColumn(col, row);
+    if (res.ok) {
+      console.log(`Insert ok with column "${col}". Using it from now on.`);
+      workingColumn = col;
+      return { ok:true, col, data:res.data };
+    } else {
+      // Check PostgREST error shape for missing column: PGRST204
+      const errObj = res.error;
+      console.log(`Insert failed for "${col}":`, errObj);
+      // If message contains "Could not find the 'X' column" we continue
+      const m = errObj && (errObj.message || errObj.error || JSON.stringify(errObj));
+      if (m && m.toString().includes("Could not find the")) {
+        // try next
+        continue;
+      } else {
+        // unknown error (for example, CORS, network, 403)
+        return { ok:false, error: errObj };
+      }
+    }
+  }
+  return { ok:false, error: "No writable text column found among candidates: content,message,text" };
+}
+
+async function insertWithColumn(col, username, text) {
+  try {
+    const row = { username, [col]: text };
+    const r = await supabase.from(TABLE).insert([row]).select();
+    if (r.error) {
+      return { ok:false, error:r.error };
+    }
+    return { ok:true, data: r.data, col };
+  } catch (e) {
+    return { ok:false, error:e };
+  }
+}
 
 /* ==== Render ==== */
 function clearChatAndRenderAll(){
@@ -482,7 +546,8 @@ function renderOneMessage(msg, live=false){
     delBtn.onclick = () => {
       const idx = messages.findIndex(m=>m.id===msg.id);
       if(idx>=0){ messages[idx].deleted = true; saveLocalState(); }
-      publishMessage({ ...msg, deleted:true });
+      // Delete from Supabase
+      deleteMessage(msg.id);
       menu.style.display='none';
       clearChatAndRenderAll();
     };
@@ -495,7 +560,8 @@ function renderOneMessage(msg, live=false){
         if(newTs != null){
           const idx = messages.findIndex(m=>m.id===msg.id);
           if(idx>=0){ messages[idx].timestamp = newTs; saveLocalState(); }
-          publishMessage({ ...msg, timestamp:newTs });
+          // Update in Supabase
+          updateMessageTimestamp(msg.id, newTs);
           clearChatAndRenderAll();
         }
         menu.style.display='none';
@@ -506,7 +572,8 @@ function renderOneMessage(msg, live=false){
         if(!confirm('Confirm force delete this message for all users?')) return;
         const idx = messages.findIndex(m=>m.id===msg.id);
         if(idx>=0){ messages[idx].deleted = true; saveLocalState(); }
-        publishMessage({ ...msg, deleted:true });
+        // Delete from Supabase
+        deleteMessage(msg.id);
         clearChatAndRenderAll();
         menu.style.display='none';
       };
@@ -532,108 +599,125 @@ function renderOneMessage(msg, live=false){
   chatDiv.scrollTop = chatDiv.scrollHeight;
 }
 
-/* ==== PubNub Functions ==== */
-function initializePubNub() {
-  pubnub = new PubNub({
-    publishKey: PUBLISH_KEY,
-    subscribeKey: SUBSCRIBE_KEY,
-    uuid: currentUser.username,
-    secretKey: isAdmin ? SECRET_KEY : undefined // Only admin gets secret key for admin operations
-  });
-
-  // Add listener
-  pubnub.addListener({
-    message: function(messageEvent) {
-      handleIncomingMessage(messageEvent.message);
-    },
-    status: function(statusEvent) {
-      if (statusEvent.category === "PNConnectedCategory") {
-        console.log("Connected to PubNub");
-      }
+/* ==== Supabase Functions ==== */
+function initializeSupabase() {
+  try {
+    if (!window.supabase) {
+      console.error("supabase SDK did not load");
+      showNotifyBanner("Supabase SDK failed to load. Check network.");
+      return;
     }
-  });
-
-  // Subscribe to channel
-  pubnub.subscribe({
-    channels: [CHANNEL_NAME]
-  });
-}
-
-function publishMessage(messageData) {
-  if (!pubnub) return;
-  
-  pubnub.publish({
-    channel: CHANNEL_NAME,
-    message: messageData
-  }, function(status, response) {
-    if (status.error) {
-      console.error("Publish failed:", status);
-      showNotifyBanner('Failed to send message');
-    }
-  });
-}
-
-function handleIncomingMessage(data) {
-  // Handle system messages
-  if(data.system === 'ban' && data.target){
-    bannedUsers.add(data.target);
-    saveLocalState();
-    clearChatAndRenderAll();
-    return;
-  }
-  if(data.system === 'unban' && data.target){
-    bannedUsers.delete(data.target);
-    saveLocalState();
-    clearChatAndRenderAll();
-    return;
-  }
-  if(data.system === 'notify' && data.text){
-    showNotifyBanner(data.text);
-    return;
-  }
-
-  const idx = messages.findIndex(m=>m.id === data.id);
-  if(idx === -1){
-    messages.push(data);
-    saveLocalState();
-    renderOneMessage(data,true);
-  } else {
-    messages[idx] = { ...messages[idx], ...data };
-    saveLocalState();
-    clearChatAndRenderAll();
-  }
-}
-
-/* ==== Load History from PubNub ==== */
-function loadHistory(){
-  loadingDiv.style.display = 'flex';
-  
-  pubnub.fetchMessages({
-    channels: [CHANNEL_NAME],
-    count: 100
-  }, (status, response) => {
-    loadingDiv.style.display = 'none';
+    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     
-    if (status.error) {
-      console.error('History fetch error:', status);
+    // Load recent messages and subscribe to realtime updates
+    fetchRecent().then(() => subscribeRealtime()).catch(e => console.error(e));
+  } catch (error) {
+    console.error('Error initializing Supabase:', error);
+    showNotifyBanner('Error connecting to database');
+  }
+}
+
+async function fetchRecent(){
+  loadingDiv.style.display = 'flex';
+  try {
+    // Try to select these columns (if they don't exist it may error).
+    let selectCols = 'id, username, content, message, text, created_at';
+    let r = await supabase.from(TABLE).select(selectCols).order('created_at',{ascending:true}).limit(300);
+    if (r.error) {
+      // fallback to plain select *
+      console.log('Select with candidate columns failed, trying select * — error:', r.error);
+      r = await supabase.from(TABLE).select('*').order('created_at',{ascending:true}).limit(300);
+    }
+    if (r.error) {
+      console.error('Fetch failed:', r.error);
+      showNotifyBanner('Fetch failed: ' + (r.error.message || JSON.stringify(r.error)));
       return;
     }
     
-    const channelMessages = response.channels[CHANNEL_NAME];
-    if (channelMessages) {
-      channelMessages.forEach(item => {
-        const data = item.message;
-        const idx = messages.findIndex(m=>m.id === data.id);
-        if(idx === -1){
-          messages.push(data);
-        } else {
-          messages[idx] = { ...messages[idx], ...data };
-        }
-      });
-      saveLocalState();
-      clearChatAndRenderAll();
+    // Process fetched messages
+    messages = r.data.map(m => {
+      const text = m.content || m.message || m.text || '';
+      return {
+        id: m.id,
+        username: m.username || 'anon',
+        message: text,
+        timestamp: m.created_at ? new Date(m.created_at).toLocaleTimeString() : '',
+        deleted: false
+      };
+    });
+    
+    saveLocalState();
+    clearChatAndRenderAll();
+  } catch (e) {
+    console.error('Fetch exception:', e);
+    showNotifyBanner('Fetch exception: ' + e.message);
+  } finally {
+    loadingDiv.style.display = 'none';
+  }
+}
+
+async function subscribeRealtime() {
+  try {
+    if (realtimeSubscription) {
+      console.log('Realtime already subscribed.');
+      return;
     }
-  });
+    realtimeSubscription = supabase.channel('public:'+TABLE)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: TABLE }, (payload) => {
+        console.log('Realtime INSERT:', payload.new);
+        // Process new message
+        const m = payload.new;
+        const text = m.content || m.message || m.text || '';
+        const newMessage = {
+          id: m.id,
+          username: m.username || 'anon',
+          message: text,
+          timestamp: m.created_at ? new Date(m.created_at).toLocaleTimeString() : '',
+          deleted: false
+        };
+        
+        // Add to messages and render
+        const idx = messages.findIndex(msg => msg.id === newMessage.id);
+        if (idx === -1) {
+          messages.push(newMessage);
+          saveLocalState();
+          renderOneMessage(newMessage, true);
+        }
+      })
+      .subscribe();
+    console.log('Realtime subscription created');
+  } catch (e) {
+    console.error('Realtime subscribe error:', e);
+    showNotifyBanner('Realtime subscribe error: ' + (e.message||e));
+  }
+}
+
+async function deleteMessage(id) {
+  try {
+    const { error } = await supabase
+      .from(TABLE)
+      .delete()
+      .eq('id', id);
+    
+    if (error) {
+      console.error('Delete error:', error);
+      showNotifyBanner('Delete failed: ' + error.message);
+    }
+  } catch (e) {
+    console.error('Delete exception:', e);
+    showNotifyBanner('Delete exception: ' + e.message);
+  }
+}
+
+async function updateMessageTimestamp(id, newTimestamp) {
+  try {
+    // This would require a timestamp column in your database
+    // For now, we'll just update the local state
+    console.log('Timestamp update would be implemented here for ID:', id, 'New timestamp:', newTimestamp);
+  } catch (e) {
+    console.error('Update timestamp error:', e);
+    showNotifyBanner('Update timestamp error: ' + e.message);
+  }
 }
 
 /* ==== Load local state and initial render ==== */
@@ -648,31 +732,31 @@ if(localStorage.getItem('chatUser')){
   pinOverlay.style.display = 'none';
   chatApp.style.display = 'flex';
   
-  // Initialize PubNub after user is loaded
-  initializePubNub();
+  // Initialize Supabase after user is loaded
+  initializeSupabase();
   
   if(messages.length) messages.forEach(m => renderOneMessage(m,false));
-  // Load history after PubNub is initialized
-  setTimeout(() => loadHistory(), 1000);
 }
 
 /* ==== Send message ==== */
 sendBtn.addEventListener('click', sendMessage);
 messageInput.addEventListener('keypress', (e)=>{ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendMessage(); }});
-function sendMessage(){
+async function sendMessage(){
   const text = (messageInput.value || '').trim();
   if(!text || !currentUser) return;
   if(bannedUsers.has(currentUser.username)){
     showNotifyBanner('You are banned from sending messages.');
     return;
   }
-  const id = makeId();
-  const ts = formatTS();
-  const msgObj = { id, username: currentUser.username, message: text, timestamp: ts, deleted: false };
-  messages.push(msgObj);
-  saveLocalState();
-  renderOneMessage(msgObj,false);
-  publishMessage(msgObj);
+  
+  // determine writable column if needed
+  const result = await determineColumnAndSend(currentUser.username, text);
+  if (!result.ok) {
+    showNotifyBanner('Send failed: ' + (result.error && result.error.message ? result.error.message : JSON.stringify(result.error)));
+    console.error('Detailed send error:', result.error);
+    return;
+  }
+  
   messageInput.value = '';
 }
 
@@ -708,11 +792,10 @@ pinBtn.addEventListener('click', ()=> {
   pinOverlay.style.display = 'none';
   chatApp.style.display = 'flex';
   
-  // Initialize PubNub and load messages
-  initializePubNub();
+  // Initialize Supabase and load messages
+  initializeSupabase();
   loadLocalState();
   if(messages.length) clearChatAndRenderAll();
-  setTimeout(() => loadHistory(), 1000);
 });
 
 /* ==== Admin modal toggle ==== */
@@ -731,7 +814,7 @@ delByIdBtn.addEventListener('click', ()=> {
   if(idx === -1) return showNotifyBanner('Message id not found.');
   messages[idx].deleted = true;
   saveLocalState();
-  publishMessage({ ...messages[idx], deleted:true });
+  deleteMessage(id);
   clearChatAndRenderAll();
   showNotifyBanner('Message deleted.');
 });
@@ -741,7 +824,7 @@ deleteAllBtn.addEventListener('click', ()=> {
   if(!confirm('Confirm delete all messages for everyone?')) return;
   for(const msg of messages){ 
     msg.deleted = true; 
-    publishMessage({ ...msg, deleted:true }); 
+    deleteMessage(msg.id);
   }
   saveLocalState();
   clearChatAndRenderAll();
@@ -757,7 +840,7 @@ editTsBtn.addEventListener('click', ()=> {
   if(idx === -1) return showNotifyBanner('Message id not found.');
   messages[idx].timestamp = newTs;
   saveLocalState();
-  publishMessage({ ...messages[idx], timestamp:newTs });
+  updateMessageTimestamp(id, newTs);
   clearChatAndRenderAll();
   showNotifyBanner('Timestamp updated.');
 });
@@ -768,8 +851,6 @@ banBtn.addEventListener('click', ()=> {
   if(!t) return showNotifyBanner('Provide username to ban.');
   bannedUsers.add(t);
   saveLocalState();
-  publishMessage({ id: makeId(), system:'ban', target: t });
-  clearChatAndRenderAll();
   showNotifyBanner(`User ${t} banned.`);
 });
 unbanBtn.addEventListener('click', ()=> {
@@ -778,8 +859,6 @@ unbanBtn.addEventListener('click', ()=> {
   if(!t) return showNotifyBanner('Provide username to unban.');
   bannedUsers.delete(t);
   saveLocalState();
-  publishMessage({ id: makeId(), system:'unban', target: t });
-  clearChatAndRenderAll();
   showNotifyBanner(`User ${t} unbanned.`);
 });
 // notify
@@ -787,14 +866,13 @@ notifyBtn.addEventListener('click', ()=> {
   if(!isAdmin) return;
   const txt = (notifyTextInput.value||'').trim();
   if(!txt) return showNotifyBanner('Provide notification text.');
-  publishMessage({ id: makeId(), system:'notify', text: txt });
-  showNotifyBanner('Notification sent.');
+  showNotifyBanner(txt);
 });
 
 /* ==== Notifications (animated banner) ==== */
 let bannerTimer = null;
 function showNotifyBanner(text){
-  notifyBanner.textContent = text + ' — please refresh to update';
+  notifyBanner.textContent = text;
   notifyBanner.style.display = 'block';
   if(bannerTimer) clearTimeout(bannerTimer);
   bannerTimer = setTimeout(()=> notifyBanner.style.display = 'none', 9000);
@@ -802,9 +880,8 @@ function showNotifyBanner(text){
 
 /* ==== Other UI controls ==== */
 signoutBtn.addEventListener('click', ()=> { 
-  if (pubnub) {
-    pubnub.unsubscribeAll();
-    pubnub.stop();
+  if (realtimeSubscription) {
+    supabase.removeChannel(realtimeSubscription);
   }
   localStorage.removeItem('chatUser'); 
   localStorage.removeItem('lastPin'); 
@@ -813,8 +890,8 @@ signoutBtn.addEventListener('click', ()=> {
 
 /* ==== Before unload: cleanup ==== */
 window.addEventListener('beforeunload', ()=> {
-  if (pubnub) {
-    pubnub.unsubscribeAll();
+  if (realtimeSubscription) {
+    supabase.removeChannel(realtimeSubscription);
   }
 });
 
