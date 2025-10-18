@@ -691,8 +691,8 @@ function renderOneMessage(msg, live=false){
   const el = document.createElement('div');
   el.className = 'message ' + (msg.username === (currentUser && currentUser.username) ? 'myMessage' : 'otherMessage');
   el.dataset.id = msg.id;
-
-  const profilePic = userProfiles[msg.username] || 'https://via.placeholder.com/36';
+//profile picture placeholder here!!!
+  const profilePic = userProfiles[msg.username] || 'https://www.thisiscolossal.com/wp-content/uploads/2024/01/spherewave.gif';
   const content = msg.deleted ? "<em>Message deleted</em>" :
     (msg.message && msg.message.match(/^https?:\/\/.*\.(jpg|jpeg|png|gif|webp)$/i) ? `<img src="${escapeHtml(msg.message)}" style="max-width:260px;border-radius:8px" />` :
       (msg.message && msg.message.match(/^https?:\/\//i) ? `<a href="${escapeHtml(msg.message)}" target="_blank" rel="noreferrer">${escapeHtml(msg.message)}</a>` :
