@@ -154,7 +154,9 @@ header{
   font-size:14px;
   position:relative;
   word-break:break-word;
-  transition:transform .18s,opacity .18s
+  transition:transform .18s,opacity .18s;
+  display: flex;
+  align-items: center;
 }
 .myMessage{
   align-self:flex-end;
@@ -280,6 +282,62 @@ footer button{
   cursor:pointer
 }
 
+/* Profile modal */
+.profile-modal{
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: var(--overlay-background);
+  z-index: 110;
+}
+.profile-modal-content{
+  background: var(--card-background);
+  padding: 20px;
+  border-radius: 16px;
+  width: 320px;
+  box-shadow: 0 8px 30px var(--shadow-color);
+  text-align: center;
+}
+.profile-preview{
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  margin: 10px auto;
+  display: block;
+}
+.profile-input-container{
+  margin: 10px 0;
+}
+.profile-input-container input{
+  width: 100%;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: transparent;
+  color: var(--text-color);
+}
+.profile-modal-actions{
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+.profile-modal-actions button{
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+}
+.profile-modal-actions button:first-child{
+  background: #ccc;
+  color: #333;
+}
+.profile-modal-actions button:last-child{
+  background: var(--button-background);
+  color: var(--button-text);
+}
+
 /* notification banner */
 .notify-banner{
   position:fixed;
@@ -318,6 +376,7 @@ a{color:#0a66c2;text-decoration:underline}
   <header>
     <div>Chatify</div>
     <div class="header-actions">
+      <button id="profileBtn" class="button-clear" title="Set profile picture">Profile</button>
       <button id="toggleThemeBtn" class="button-clear" title="Toggle theme">Toggle Theme</button>
       <button id="adminBtn" class="admin-panel-btn" style="display:none">Admin</button>
       <button id="signoutBtn" class="button-clear" title="Sign out" style="color:salmon">Sign out</button>
@@ -367,6 +426,21 @@ a{color:#0a66c2;text-decoration:underline}
   <div style="font-size:12px;color:#6b7280;margin-top:8px">Admin user: <strong>root</strong> — Admin PIN: <strong>qwery</strong></div>
 </div>
 
+<!-- Profile Picture Modal -->
+<div id="profileModal" class="profile-modal">
+  <div class="profile-modal-content">
+    <h3>Set Profile Picture</h3>
+    <img id="profilePreview" class="profile-preview" src="https://via.placeholder.com/80" alt="Profile preview" />
+    <div class="profile-input-container">
+      <input type="text" id="profileUrlInput" placeholder="Enter image URL" />
+    </div>
+    <div class="profile-modal-actions">
+      <button id="cancelProfileBtn">Cancel</button>
+      <button id="saveProfileBtn">Save</button>
+    </div>
+  </div>
+</div>
+
 <div id="notifyBanner" class="notify-banner"></div>
 
 <audio id="newMessageSound" src="https://www.soundjay.com/button/sounds/button-3.mp3" preload="auto"></audio>
@@ -384,6 +458,7 @@ const TABLE = "messages"; // public.messages
 /* ==== Supabase Instance ==== */
 let supabase = null;
 let realtimeSubscription = null;
+let usersChannel = null;
 
 /* ==== Elements ==== */
 const pinOverlay = document.getElementById('pinOverlay');
@@ -401,6 +476,12 @@ const notifyBanner = document.getElementById('notifyBanner');
 const newMessageSound = document.getElementById('newMessageSound');
 const toggleThemeBtn = document.getElementById('toggleThemeBtn');
 const signoutBtn = document.getElementById('signoutBtn');
+const profileBtn = document.getElementById('profileBtn');
+const profileModal = document.getElementById('profileModal');
+const profileUrlInput = document.getElementById('profileUrlInput');
+const profilePreview = document.getElementById('profilePreview');
+const cancelProfileBtn = document.getElementById('cancelProfileBtn');
+const saveProfileBtn = document.getElementById('saveProfileBtn');
 
 /* Admin controls */
 const delIdInput = document.getElementById('delId');
@@ -420,6 +501,7 @@ let currentUser = null;
 let messages = [];        // persisted master copy
 let displayed = new Set(); // ids rendered
 let bannedUsers = new Set();
+let userProfiles = {};    // {username: pfp_url}
 let isAdmin = false;
 let isTabActive = true;
 let workingColumn = null; // for dynamic column detection
@@ -458,13 +540,53 @@ async function tryInsertColumn(colName, row) {
     const r = await supabase
       .from(TABLE)
       .insert([row])
-      .select(); // select returns inserted row for verification
+      .select();
     if (r.error) {
       return { ok: false, error: r.error };
     }
     return { ok:true, data: r.data };
   } catch (e) {
     return { ok:false, error: e };
+  }
+}
+
+async function determineColumnAndSend(username, text) {
+  const candidates = ['content','message','text'];
+  if (workingColumn) {
+    return await insertWithColumn(workingColumn, username, text);
+  }
+  for (const col of candidates) {
+    console.log(`Trying insert with column "${col}"...`);
+    const row = { username, [col]: text, id: makeId(), timestamp: formatTS() };
+    const res = await tryInsertColumn(col, row);
+    if (res.ok) {
+      console.log(`Insert ok with column "${col}". Using it from now on.`);
+      workingColumn = col;
+      return { ok:true, col, data:res.data };
+    } else {
+      const errObj = res.error;
+      console.log(`Insert failed for "${col}":`, errObj);
+      const m = errObj && (errObj.message || errObj.error || JSON.stringify(errObj));
+      if (m && m.toString().includes("Could not find the")) {
+        continue;
+      } else {
+        return { ok:false, error: errObj };
+      }
+    }
+  }
+  return { ok:false, error: "No writable text column found among candidates: content,message,text" };
+}
+
+async function insertWithColumn(col, username, text) {
+  try {
+    const row = { username, [col]: text, id: makeId(), timestamp: formatTS() };
+    const r = await supabase.from(TABLE).insert([row]).select();
+    if (r.error) {
+      return { ok:false, error:r.error };
+    }
+    return { ok:true, data: r.data, col };
+  } catch (e) {
+    return { ok:false, error:e };
   }
 }
 
@@ -514,6 +636,47 @@ async function insertWithColumn(col, username, text) {
   }
 }
 
+/* ==== Load profiles from Supabase ==== */
+async function loadProfiles() {
+  const { data, error } = await supabase.from('users').select('username, pfp_url');
+  if (error) {
+    if (error.message.includes("Could not find the table")) {
+      console.warn('Users table not found, creating...');
+      await createUsersTable();
+    } else {
+      console.error('Load profiles error:', error);
+      showNotifyBanner('Failed to load profiles: ' + error.message);
+      return;
+    }
+  }
+  if (data) {
+    data.forEach(u => {
+      userProfiles[u.username] = u.pfp_url;
+    });
+  }
+}
+
+/* ==== Create users table if not exists ==== */
+async function createUsersTable() {
+  // Note: Supabase doesn't allow direct table creation via client-side JS.
+  // You must create the table manually in the Supabase dashboard or SQL editor.
+  // This function is a placeholder to log the requirement.
+  console.log('Please create the "users" table in Supabase with the following SQL:');
+  console.log(`
+    create table users (
+      username text primary key,
+      pfp_url text
+    );
+    alter table users enable row level security;
+    create policy "anon can read users" on users for select using (true);
+    create policy "anon can upsert users" on users for insert with check (true);
+    create policy "anon can update users" on users for update using (true);
+    -- Enable Realtime
+    alter publication supabase_realtime add table users;
+  `);
+  showNotifyBanner('Users table not found. Please create it in Supabase SQL editor.');
+}
+
 /* ==== Render ==== */
 function clearChatAndRenderAll(){
   chatDiv.innerHTML = '';
@@ -529,30 +692,30 @@ function renderOneMessage(msg, live=false){
   el.className = 'message ' + (msg.username === (currentUser && currentUser.username) ? 'myMessage' : 'otherMessage');
   el.dataset.id = msg.id;
 
+  const profilePic = userProfiles[msg.username] || 'https://via.placeholder.com/36';
   const content = msg.deleted ? "<em>Message deleted</em>" :
     (msg.message && msg.message.match(/^https?:\/\/.*\.(jpg|jpeg|png|gif|webp)$/i) ? `<img src="${escapeHtml(msg.message)}" style="max-width:260px;border-radius:8px" />` :
       (msg.message && msg.message.match(/^https?:\/\//i) ? `<a href="${escapeHtml(msg.message)}" target="_blank" rel="noreferrer">${escapeHtml(msg.message)}</a>` :
        escapeHtml(msg.message || '')));
 
   const bannedNote = isBanned ? `<div style="font-size:12px;color:#bf3b3b;margin-bottom:6px">[BANNED USER]</div>` : '';
-  el.innerHTML = `<div>${bannedNote}<strong>${escapeHtml(msg.username)}</strong>: ${content}</div><div class="timestamp">${escapeHtml(msg.timestamp || '')}</div>`;
+  el.innerHTML = `
+    <img src="${escapeHtml(profilePic)}" alt="pfp" style="width:30px;height:30px;border-radius:50%;margin-right:10px;vertical-align:middle;">
+    <div>${bannedNote}<strong>${escapeHtml(msg.username)}</strong>: ${content}</div><div class="timestamp">${escapeHtml(msg.timestamp || '')}</div>
+  `;
 
-  // If admin or message owner, show options menu; admin can delete any message, owner can delete own
   if((isAdmin) || (currentUser && msg.username === currentUser.username && !msg.deleted)){
     const opt = document.createElement('div'); opt.className = 'options'; opt.textContent = '⋮';
     const menu = document.createElement('div'); menu.className = 'options-menu';
-    // Delete action (admin or owner)
     const delBtn = document.createElement('button'); delBtn.textContent = 'Delete';
     delBtn.onclick = () => {
       const idx = messages.findIndex(m=>m.id===msg.id);
       if(idx>=0){ messages[idx].deleted = true; saveLocalState(); }
-      // Delete from Supabase
       deleteMessage(msg.id);
       menu.style.display='none';
       clearChatAndRenderAll();
     };
     menu.appendChild(delBtn);
-    // If admin, edit timestamp and force-delete option
     if(isAdmin){
       const editBtn = document.createElement('button'); editBtn.textContent = 'Edit timestamp';
       editBtn.onclick = () => {
@@ -560,7 +723,6 @@ function renderOneMessage(msg, live=false){
         if(newTs != null){
           const idx = messages.findIndex(m=>m.id===msg.id);
           if(idx>=0){ messages[idx].timestamp = newTs; saveLocalState(); }
-          // Update in Supabase
           updateMessageTimestamp(msg.id, newTs);
           clearChatAndRenderAll();
         }
@@ -572,7 +734,6 @@ function renderOneMessage(msg, live=false){
         if(!confirm('Confirm force delete this message for all users?')) return;
         const idx = messages.findIndex(m=>m.id===msg.id);
         if(idx>=0){ messages[idx].deleted = true; saveLocalState(); }
-        // Delete from Supabase
         deleteMessage(msg.id);
         clearChatAndRenderAll();
         menu.style.display='none';
@@ -586,7 +747,6 @@ function renderOneMessage(msg, live=false){
 
   chatDiv.appendChild(el);
   if(live && currentUser && msg.username !== currentUser.username && !msg.deleted){
-    // Only show notifications if tab is not active
     if (!isTabActive) {
       if(msg.message && msg.message.includes('@' + currentUser.username)){
         alert(`Mentioned: ${msg.username}: ${msg.message}`);
@@ -608,9 +768,10 @@ function initializeSupabase() {
       return;
     }
     supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    
-    // Load recent messages and subscribe to realtime updates
-    fetchRecent().then(() => subscribeRealtime()).catch(e => console.error(e));
+    fetchRecent().then(() => {
+      subscribeRealtime();
+      loadProfiles();
+    }).catch(e => console.error(e));
   } catch (error) {
     console.error('Error initializing Supabase:', error);
     showNotifyBanner('Error connecting to database');
@@ -620,11 +781,9 @@ function initializeSupabase() {
 async function fetchRecent(){
   loadingDiv.style.display = 'flex';
   try {
-    // Try to select these columns (if they don't exist it may error).
-    let selectCols = 'id, username, content, message, text, created_at';
+    let selectCols = 'id, username, content, message, text, created_at, timestamp';
     let r = await supabase.from(TABLE).select(selectCols).order('created_at',{ascending:true}).limit(300);
     if (r.error) {
-      // fallback to plain select *
       console.log('Select with candidate columns failed, trying select * — error:', r.error);
       r = await supabase.from(TABLE).select('*').order('created_at',{ascending:true}).limit(300);
     }
@@ -634,15 +793,14 @@ async function fetchRecent(){
       return;
     }
     
-    // Process fetched messages
     messages = r.data.map(m => {
       const text = m.content || m.message || m.text || '';
       return {
-        id: m.id,
+        id: m.id || makeId(),
         username: m.username || 'anon',
         message: text,
-        timestamp: m.created_at ? new Date(m.created_at).toLocaleTimeString() : '',
-        deleted: false
+        timestamp: m.timestamp || (m.created_at ? new Date(m.created_at).toLocaleTimeString() : ''),
+        deleted: m.deleted || false
       };
     });
     
@@ -665,24 +823,45 @@ async function subscribeRealtime() {
     realtimeSubscription = supabase.channel('public:'+TABLE)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: TABLE }, (payload) => {
         console.log('Realtime INSERT:', payload.new);
-        // Process new message
         const m = payload.new;
         const text = m.content || m.message || m.text || '';
         const newMessage = {
-          id: m.id,
+          id: m.id || makeId(),
           username: m.username || 'anon',
           message: text,
-          timestamp: m.created_at ? new Date(m.created_at).toLocaleTimeString() : '',
-          deleted: false
+          timestamp: m.timestamp || (m.created_at ? new Date(m.created_at).toLocaleTimeString() : ''),
+          deleted: m.deleted || false
         };
         
-        // Add to messages and render
         const idx = messages.findIndex(msg => msg.id === newMessage.id);
         if (idx === -1) {
           messages.push(newMessage);
           saveLocalState();
           renderOneMessage(newMessage, true);
         }
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: TABLE }, (payload) => {
+        const m = payload.new;
+        const text = m.content || m.message || m.text || '';
+        const updatedMessage = {
+          id: m.id,
+          username: m.username || 'anon',
+          message: text,
+          timestamp: m.timestamp || (m.created_at ? new Date(m.created_at).toLocaleTimeString() : ''),
+          deleted: m.deleted || false
+        };
+        const idx = messages.findIndex(msg => msg.id === updatedMessage.id);
+        if (idx !== -1) {
+          messages[idx] = updatedMessage;
+          saveLocalState();
+          clearChatAndRenderAll();
+        }
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: TABLE }, (payload) => {
+        const deletedId = payload.old.id;
+        messages = messages.filter(m => m.id !== deletedId);
+        saveLocalState();
+        clearChatAndRenderAll();
       })
       .subscribe();
     console.log('Realtime subscription created');
@@ -711,12 +890,17 @@ async function deleteMessage(id) {
 
 async function updateMessageTimestamp(id, newTimestamp) {
   try {
-    // This would require a timestamp column in your database
-    // For now, we'll just update the local state
-    console.log('Timestamp update would be implemented here for ID:', id, 'New timestamp:', newTimestamp);
+    const { error } = await supabase
+      .from(TABLE)
+      .update({ timestamp: newTimestamp })
+      .eq('id', id);
+    if (error) {
+      console.error('Update timestamp error:', error);
+      showNotifyBanner('Update timestamp error: ' + error.message);
+    }
   } catch (e) {
-    console.error('Update timestamp error:', e);
-    showNotifyBanner('Update timestamp error: ' + e.message);
+    console.error('Update timestamp exception:', e);
+    showNotifyBanner('Update timestamp exception: ' + e.message);
   }
 }
 
@@ -724,17 +908,13 @@ async function updateMessageTimestamp(id, newTimestamp) {
 loadLocalState();
 if(localStorage.getItem('chatUser')){
   currentUser = JSON.parse(localStorage.getItem('chatUser'));
-  // admin check saved
   if(currentUser.username === ADMIN_USERNAME && localStorage.getItem('lastPin') === ADMIN_PIN){
     isAdmin = true;
     adminBtn.style.display = 'inline-block';
   }
   pinOverlay.style.display = 'none';
   chatApp.style.display = 'flex';
-  
-  // Initialize Supabase after user is loaded
   initializeSupabase();
-  
   if(messages.length) messages.forEach(m => renderOneMessage(m,false));
 }
 
@@ -749,7 +929,6 @@ async function sendMessage(){
     return;
   }
   
-  // determine writable column if needed
   const result = await determineColumnAndSend(currentUser.username, text);
   if (!result.ok) {
     showNotifyBanner('Send failed: ' + (result.error && result.error.message ? result.error.message : JSON.stringify(result.error)));
@@ -761,14 +940,12 @@ async function sendMessage(){
 }
 
 /* ==== PIN login logic ==== */
-pinBtn.addEventListener('click', ()=> {
+pinBtn.addEventListener('click', async () => {
   const username = (usernameInput.value || '').trim();
   const pin = (pinInput.value || '').trim();
   if(!username) return;
-  // set user
   currentUser = { username };
   localStorage.setItem('chatUser', JSON.stringify(currentUser));
-  // admin check
   if(username === ADMIN_USERNAME && pin === ADMIN_PIN){
     isAdmin = true;
     adminBtn.style.display = 'inline-block';
@@ -776,37 +953,30 @@ pinBtn.addEventListener('click', ()=> {
   } else {
     isAdmin = false;
     adminBtn.style.display = 'none';
-    // save lastPin only for admin
     localStorage.removeItem('lastPin');
   }
-  // regular pin check required to enter
   const allowedPin = (username === ADMIN_USERNAME && pin === ADMIN_PIN) ? ADMIN_PIN : PIN_CODE;
   if(pin !== allowedPin) {
-    alert('Wrong PIN'); // minimal feedback
-    // clear credentials saved if wrong
+    alert('Wrong PIN');
     localStorage.removeItem('chatUser');
     currentUser = null;
     return;
   }
-  // proceed
   pinOverlay.style.display = 'none';
   chatApp.style.display = 'flex';
-  
-  // Initialize Supabase and load messages
   initializeSupabase();
   loadLocalState();
   if(messages.length) clearChatAndRenderAll();
 });
 
 /* ==== Admin modal toggle ==== */
-adminBtn.addEventListener('click', ()=> {
+adminBtn.addEventListener('click', () => {
   adminModal.style.display = adminModal.style.display === 'block' ? 'none' : 'block';
   adminModal.setAttribute('aria-hidden', adminModal.style.display === 'none');
 });
 
 /* ==== Admin actions ==== */
-// delete by id
-delByIdBtn.addEventListener('click', ()=> {
+delByIdBtn.addEventListener('click', () => {
   if(!isAdmin) return;
   const id = (delIdInput.value||'').trim();
   if(!id) return showNotifyBanner('Provide id to delete.');
@@ -818,8 +988,7 @@ delByIdBtn.addEventListener('click', ()=> {
   clearChatAndRenderAll();
   showNotifyBanner('Message deleted.');
 });
-// delete all
-deleteAllBtn.addEventListener('click', ()=> {
+deleteAllBtn.addEventListener('click', () => {
   if(!isAdmin) return;
   if(!confirm('Confirm delete all messages for everyone?')) return;
   for(const msg of messages){ 
@@ -830,8 +999,7 @@ deleteAllBtn.addEventListener('click', ()=> {
   clearChatAndRenderAll();
   showNotifyBanner('All messages deleted.');
 });
-// edit timestamp
-editTsBtn.addEventListener('click', ()=> {
+editTsBtn.addEventListener('click', () => {
   if(!isAdmin) return;
   const id = (editIdInput.value||'').trim();
   const newTs = (editTsInput.value||'').trim();
@@ -844,8 +1012,7 @@ editTsBtn.addEventListener('click', ()=> {
   clearChatAndRenderAll();
   showNotifyBanner('Timestamp updated.');
 });
-// ban/unban
-banBtn.addEventListener('click', ()=> {
+banBtn.addEventListener('click', () => {
   if(!isAdmin) return;
   const t = (banUserInput.value||'').trim();
   if(!t) return showNotifyBanner('Provide username to ban.');
@@ -853,7 +1020,7 @@ banBtn.addEventListener('click', ()=> {
   saveLocalState();
   showNotifyBanner(`User ${t} banned.`);
 });
-unbanBtn.addEventListener('click', ()=> {
+unbanBtn.addEventListener('click', () => {
   if(!isAdmin) return;
   const t = (banUserInput.value||'').trim();
   if(!t) return showNotifyBanner('Provide username to unban.');
@@ -861,13 +1028,50 @@ unbanBtn.addEventListener('click', ()=> {
   saveLocalState();
   showNotifyBanner(`User ${t} unbanned.`);
 });
-// notify
-notifyBtn.addEventListener('click', ()=> {
+notifyBtn.addEventListener('click', () => {
   if(!isAdmin) return;
   const txt = (notifyTextInput.value||'').trim();
   if(!txt) return showNotifyBanner('Provide notification text.');
   showNotifyBanner(txt);
 });
+
+/* ==== Profile modal logic ==== */
+profileBtn.addEventListener('click', () => {
+  profileModal.style.display = 'flex';
+  profileUrlInput.value = userProfiles[currentUser.username] || '';
+  profilePreview.src = userProfiles[currentUser.username] || 'https://via.placeholder.com/80';
+});
+cancelProfileBtn.addEventListener('click', () => {
+  profileModal.style.display = 'none';
+});
+profileUrlInput.addEventListener('input', (e) => {
+  const url = e.target.value.trim();
+  if (url) {
+    profilePreview.src = url;
+  }
+});
+saveProfileBtn.addEventListener('click', async () => {
+  const url = profileUrlInput.value.trim();
+  if (!url) {
+    showNotifyBanner('Enter a valid URL');
+    return;
+  }
+  const { error } = await supabase.from('users').upsert({ username: currentUser.username, pfp_url: url });
+  if (error) {
+    showNotifyBanner('Save failed: ' + error.message);
+    return;
+  }
+  userProfiles[currentUser.username] = url;
+  profileModal.style.display = 'none';
+  showNotifyBanner('PFP updated');
+  clearChatAndRenderAll();
+});
+usersChannel = supabase.channel('public:users');
+usersChannel.on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'users' }, payload => {
+  const u = payload.new;
+  userProfiles[u.username] = u.pfp_url;
+  clearChatAndRenderAll();
+}).subscribe();
 
 /* ==== Notifications (animated banner) ==== */
 let bannerTimer = null;
@@ -879,9 +1083,12 @@ function showNotifyBanner(text){
 }
 
 /* ==== Other UI controls ==== */
-signoutBtn.addEventListener('click', ()=> { 
+signoutBtn.addEventListener('click', () => { 
   if (realtimeSubscription) {
     supabase.removeChannel(realtimeSubscription);
+  }
+  if (usersChannel) {
+    supabase.removeChannel(usersChannel);
   }
   localStorage.removeItem('chatUser'); 
   localStorage.removeItem('lastPin'); 
@@ -889,12 +1096,43 @@ signoutBtn.addEventListener('click', ()=> {
 });
 
 /* ==== Before unload: cleanup ==== */
-window.addEventListener('beforeunload', ()=> {
+window.addEventListener('beforeunload', () => {
   if (realtimeSubscription) {
     supabase.removeChannel(realtimeSubscription);
   }
+  if (usersChannel) {
+    supabase.removeChannel(usersChannel);
+  }
 });
 
+/* ==== Startup Initialization Function ==== */
+(async function initializeApp() {
+    console.log('Starting application initialization...');
+    
+    // 1. Load profiles first (this is an async operation)
+    await loadProfiles(); 
+    
+    // 2. You might have other initial data loading here, e.g.,
+    // await loadInitialMessages();
+    
+    // 3. Render the entire UI now that the data is ready
+    // This will run the function immediately when the program starts
+    console.log('All initial data loaded. Rendering UI...');
+    clearChatAndRenderAll(); // ⬅️ FIRST RUN CALL
+    
+    // 4. Set up the Supabase Realtime listeners
+    // This is where the SECOND run will be called if an update occurs later
+    usersChannel = supabase.channel('public:users');
+    usersChannel.on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'users' }, payload => {
+        const u = payload.new;
+        userProfiles[u.username] = u.pfp_url;
+        clearChatAndRenderAll(); 
+    }).subscribe();
+
+    console.log('Application fully initialized.');
+})();
+
+// NOTE: Ensure your loadProfiles function is defined and accessible.
 </script>
 </body>
 </html>
