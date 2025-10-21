@@ -3,6 +3,158 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
+<title id="pageTitle">Chatify</title>
+<style>
+  html, body {
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+    font-family: 'Poppins', sans-serif;
+    background: #f5f5f5;
+  }
+
+  .white-overlay {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%;
+    height: 100%;
+    background: white;
+    z-index: 1000;
+  }
+
+  .intro {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    z-index: 1001;
+  }
+
+  .circle {
+    width: 140px;
+    height: 140px;
+    background: #34a853;
+    border-radius: 50%;
+    transform: scale(3);
+    animation: 
+      circleRise 1.02s ease-in-out forwards,
+      moveRight 0.24s ease-out 1.01s forwards;
+  }
+
+  @keyframes circleRise {
+    0% { transform: scale(3); }
+    100% { transform: translateX(30%) scale(1); }
+  }
+  @keyframes moveRight {
+    0% { transform: translateX(10%) scale(1); }
+    100% { transform: translateX(0px) scale(1); }
+  }
+
+  .text {
+    font-size: 52px;
+    font-weight: 700;
+    color: #222;
+    letter-spacing: 2px;
+    opacity: 0;
+    animation: textReveal 0.4s ease-out 0.7s forwards;
+  }
+
+  @keyframes textReveal {
+    0% { opacity: 0; transform: translateX(-100%); }
+    100% { opacity: 1; transform: translateX(0); }
+  }
+
+  .skip-box {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    font-size: 16px;
+    color: #333;
+    opacity: 0; /* still hidden by default */
+    transition: opacity 0.6s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    z-index: 1001;
+  }
+
+  .skip-box.show {
+    opacity: 0;
+  }
+
+  .skip-box input {
+    transform: scale(1.2);
+    cursor: pointer;
+  }
+
+  .flash {
+    animation: flashLogo 1s ease-in-out forwards;
+  }
+
+  @keyframes flashLogo {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+</style>
+</head>
+<body>
+
+<div class="white-overlay" id="whiteOverlay"></div>
+
+<div class="intro">
+  <div class="circle"></div>
+  <div class="text" id="chatifyText">Chatify</div>
+  <label class="skip-box">
+    <input type="checkbox" id="skipNext" disabled> Skip intro next time
+  </label>
+</div>
+
+<script>
+  const intro = document.querySelector(".intro");
+  const whiteOverlay = document.getElementById("whiteOverlay");
+  const chatifyText = document.getElementById("chatifyText");
+  const pageTitle = document.getElementById("pageTitle");
+
+  function playIntro() {
+    intro.style.display = "flex";
+    whiteOverlay.style.display = "block";
+
+    // Show skip box (optional, still disabled)
+    setTimeout(() => document.querySelector(".skip-box").classList.add("show"), 1600);
+
+    // Complete animation + flash, then hide intro & overlay before chat loads
+    setTimeout(() => {
+      chatifyText.classList.add("flash");
+      setTimeout(() => {
+        chatifyText.classList.remove("flash");
+        intro.style.display = "none";       // hide intro container
+        whiteOverlay.style.display = "none"; // hide overlay
+      }, 1000);
+    }, 2500);
+  }
+
+  // Always play animation (skip disabled)
+  playIntro();
+
+  // Optional: click page title to replay animation
+  pageTitle.addEventListener("click", () => {
+    const answer = prompt("Type 'y' and press Enter to replay animation:");
+    if (answer && answer.toLowerCase() === 'y') {
+      playIntro();
+    }
+  });
+</script>
+</body>
+</html>
+
+
+
+
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Chatify</title>
 <!-- Supabase SDK -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.44.0/dist/umd/supabase.min.js"></script>
@@ -782,16 +934,18 @@ async function fetchRecent(){
   loadingDiv.style.display = 'flex';
   try {
     let selectCols = 'id, username, content, message, text, created_at, timestamp';
-    let r = await supabase.from(TABLE).select(selectCols).order('created_at',{ascending:true}).limit(300);
+    let r = await supabase.from(TABLE).select(selectCols).order('created_at',{descending:true}).limit(300000000);
     if (r.error) {
       console.log('Select with candidate columns failed, trying select * — error:', r.error);
-      r = await supabase.from(TABLE).select('*').order('created_at',{ascending:true}).limit(300);
+      r = await supabase.from(TABLE).select('*').order('created_at',{descending:true}).limit(3000000);
     }
     if (r.error) {
       console.error('Fetch failed:', r.error);
       showNotifyBanner('Fetch failed: ' + (r.error.message || JSON.stringify(r.error)));
       return;
     }
+    
+    
     
     messages = r.data.map(m => {
       const text = m.content || m.message || m.text || '';
