@@ -41,11 +41,11 @@
     transform: scale(3);
     animation: 
       circleRise 1.02s ease-in-out forwards,
-      moveRight 0.24s ease-out 1.01s forwards;
+      moveRight 0.24s ease-out 0.91s forwards;
   }
 
   @keyframes circleRise {
-    0% { transform: scale(3); }
+    0% { transform: scale(7.75); }
     100% { transform: translateX(30%) scale(1); }
   }
   @keyframes moveRight {
@@ -664,6 +664,7 @@ document.addEventListener('visibilitychange', () => {
 });
 
 /* ==== Theme init ==== */
+// Set initial theme
 const savedTheme = localStorage.getItem('theme');
 const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
 document.documentElement.setAttribute('data-theme', savedTheme || (prefersDark ? 'dark' : 'light'));
