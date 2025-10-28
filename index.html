@@ -533,7 +533,7 @@ a{color:#0a66c2;text-decoration:underline}
     alt="Chatify Logo" 
     style="height: 30px; width: auto;"
   />
-  <span>Chatify (codename hover)</span>
+  <span>Chatify (codename password)</span>
 </div>
 
     <div class="header-actions">
@@ -834,7 +834,7 @@ async function insertWithColumn(col, username, text) {
 
 /* ==== Load profiles from Supabase ==== */
 async function loadProfiles() {
-  const { data, error } = await supabase.from('users').select('username, pfp_url');
+  const { data, error } = await supabase.from('users').select('username, pfp_url, pin');
   if (error) {
     if (error.message.includes("Could not find the table")) {
       console.warn('Users table not found, creating...');
@@ -851,7 +851,6 @@ async function loadProfiles() {
     });
   }
 }
-
 /* ==== Create users table if not exists ==== */
 async function createUsersTable() {
   // Note: Supabase doesn't allow direct table creation via client-side JS.
@@ -1139,12 +1138,93 @@ async function sendMessage(){
 
 /* ==== PIN login logic ==== */
 pinBtn.addEventListener('click', async () => {
-  const username = (usernameInput.value || '').trim();
+  const username = (usernameInput.value || '').trim().toLowerCase();
   const pin = (pinInput.value || '').trim();
-  if(!username) return;
+  
+  if(!username || !pin) {
+    alert('Please enter both username and PIN');
+    return;
+  }
+
+  // Initialize Supabase first if it hasn't been done yet
+  if (!supabase) {
+    try {
+      supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    } catch (error) {
+      console.error('Failed to initialize Supabase:', error);
+      alert('Failed to connect to database');
+      return;
+    }
+  }
+
+  try {
+    // First, try to get existing user
+    const { data: existingUsers, error: fetchError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('username', username);
+
+    if (fetchError) {
+      console.error('Error checking user:', fetchError);
+      
+      // If table doesn't exist, create admin user and proceed
+      if (fetchError.message.includes('Could not find the table') || fetchError.code === '42P01') {
+        console.log('Users table not found, creating admin user...');
+        
+        // For now, allow login without user table for admin
+        if (username === ADMIN_USERNAME.toLowerCase() && pin === ADMIN_PIN) {
+          proceedWithLogin(username, true);
+          return;
+        } else {
+          alert('System not fully initialized. Please contact administrator.');
+          return;
+        }
+      }
+      
+      alert('Database error: ' + fetchError.message);
+      return;
+    }
+
+    // If user doesn't exist, create them
+    if (!existingUsers || existingUsers.length === 0) {
+      const { error: insertError } = await supabase
+        .from('users')
+        .insert([{ 
+          username: username, 
+          pin: pin,
+          pfp_url: 'https://www.thisiscolossal.com/wp-content/uploads/2024/01/spherewave.gif'
+        }]);
+
+      if (insertError) {
+        console.error('Error creating user:', insertError);
+        alert('Error creating user: ' + insertError.message);
+        return;
+      }
+      console.log('New user created:', username);
+      proceedWithLogin(username, username === ADMIN_USERNAME.toLowerCase() && pin === ADMIN_PIN);
+    } else {
+      // User exists - verify PIN
+      const user = existingUsers[0];
+      if (user.pin !== pin) {
+        alert('Wrong PIN');
+        return;
+      }
+      console.log('Existing user logged in:', username);
+      proceedWithLogin(username, username === ADMIN_USERNAME.toLowerCase() && pin === ADMIN_PIN);
+    }
+    
+  } catch (error) {
+    console.error('Unexpected error:', error);
+    alert('Login failed: ' + error.message);
+  }
+});
+
+// Helper function to handle successful login
+function proceedWithLogin(username, isAdminUser) {
   currentUser = { username };
   localStorage.setItem('chatUser', JSON.stringify(currentUser));
-  if(username === ADMIN_USERNAME && pin === ADMIN_PIN){
+  
+  if(isAdminUser){
     isAdmin = true;
     adminBtn.style.display = 'inline-block';
     localStorage.setItem('lastPin', ADMIN_PIN);
@@ -1153,20 +1233,13 @@ pinBtn.addEventListener('click', async () => {
     adminBtn.style.display = 'none';
     localStorage.removeItem('lastPin');
   }
-  const allowedPin = (username === ADMIN_USERNAME && pin === ADMIN_PIN) ? ADMIN_PIN : PIN_CODE;
-  if(pin !== allowedPin) {
-    alert('Wrong PIN');
-    localStorage.removeItem('chatUser');
-    currentUser = null;
-    return;
-  }
+  
   pinOverlay.style.display = 'none';
   chatApp.style.display = 'flex';
   initializeSupabase();
   loadLocalState();
-  if(messages.length) clearChatAndRenderAll();
-});
-
+}
+ 
 /* ==== Admin modal toggle ==== */
 adminBtn.addEventListener('click', () => {
   adminModal.style.display = adminModal.style.display === 'block' ? 'none' : 'block';
@@ -1254,11 +1327,18 @@ saveProfileBtn.addEventListener('click', async () => {
     showNotifyBanner('Enter a valid URL');
     return;
   }
-  const { error } = await supabase.from('users').upsert({ username: currentUser.username, pfp_url: url });
+  
+  // Only update the pfp_url, not the PIN
+  const { error } = await supabase
+    .from('users')
+    .update({ pfp_url: url })
+    .eq('username', currentUser.username);
+    
   if (error) {
     showNotifyBanner('Save failed: ' + error.message);
     return;
   }
+  
   userProfiles[currentUser.username] = url;
   profileModal.style.display = 'none';
   showNotifyBanner('PFP updated');
@@ -1334,3 +1414,5 @@ window.addEventListener('beforeunload', () => {
 </script>
 </body>
 </html>
+
+
