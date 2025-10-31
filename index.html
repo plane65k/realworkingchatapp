@@ -552,12 +552,74 @@ footer button{
   display:none;
   animation:bannerIn .35s ease
 }
+
 @keyframes bannerIn{
   from{opacity:0;transform:translate(-50%,-6px)}
   to{opacity:1;transform:translate(-50%,0)}
 }
 
 a{color:#0a66c2;text-decoration:underline}
+
+/* Emoji Reactions */
+.reactions {
+    display: flex;
+    gap: 4px;
+    margin-top: 4px;
+    flex-wrap: wrap;
+}
+
+.reaction {
+    background: var(--secondary-background);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 2px 6px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.reaction:hover {
+    background: var(--button-background);
+    color: var(--button-text);
+}
+
+.emoji-picker-btn {
+    position: absolute;
+    top: 6px;
+    right: 30px;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.2s;
+    font-size: 14px;
+}
+
+.message:hover .emoji-picker-btn {
+    opacity: 1;
+}
+
+.emoji-picker {
+    position: absolute;
+    top: 30px;
+    right: 0;
+    background: var(--card-background);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 8px;
+    display: none;
+    z-index: 10;
+    box-shadow: 0 4px 12px var(--shadow-color);
+}
+
+.emoji-option {
+    padding: 4px 8px;
+    cursor: pointer;
+    border-radius: 4px;
+    margin: 2px;
+}
+
+.emoji-option:hover {
+    background: var(--secondary-background);
+}
 </style>
 </head>
 <body>
@@ -746,6 +808,7 @@ let userProfiles = {};    // {username: pfp_url}
 let isAdmin = false;
 let isTabActive = true;
 let workingColumn = null; // for dynamic column detection
+let messageReactions = {}; // Add this line for reactions {messageId: {emoji: [usernames]}}
 
 /* ==== Tab visibility detection ==== */
 document.addEventListener('visibilitychange', () => {
@@ -958,7 +1021,73 @@ function renderOneMessage(msg, live=false){
     <img src="${escapeHtml(profilePic)}" alt="pfp" style="width:30px;height:30px;border-radius:50%;margin-right:10px;vertical-align:middle;">
     <div>${bannedNote}<strong>${escapeHtml(msg.username)}</strong>: ${content}</div><div class="timestamp">${escapeHtml(msg.timestamp || '')}</div>
   `;
+  
+  // Add emoji reactions section
+const reactions = msg.replies ? JSON.parse(msg.replies) : {};
+const reactionButtons = Object.entries(reactions).map(([emoji, users]) => 
+    `<span class="reaction" data-emoji="${emoji}" data-message="${msg.id}" title="${users.join(', ')}">
+        ${emoji} ${users.length}
+    </span>`
+).join('');
 
+const reactionsHtml = reactions && Object.keys(reactions).length > 0 ? 
+    `<div class="reactions">${reactionButtons}</div>` : '';
+
+// Add emoji picker button
+const emojiPicker = `<div class="emoji-picker-btn" data-message="${msg.id}">😊</div>`;
+
+// Update the el.innerHTML to include reactions and emoji picker
+el.innerHTML = `
+    <img src="${escapeHtml(profilePic)}" alt="pfp" style="width:30px;height:30px;border-radius:50%;margin-right:10px;vertical-align:middle;">
+    <div>${bannedNote}<strong>${escapeHtml(msg.username)}</strong>: ${content}</div>
+    <div class="timestamp">${escapeHtml(msg.timestamp || '')}</div>
+    ${reactionsHtml}
+    <div class="emoji-picker-btn" data-message="${msg.id}">😊</div>
+`;
+// Add emoji picker functionality
+// Add emoji picker functionality
+const emojiPickerBtn = el.querySelector('.emoji-picker-btn');
+if (emojiPickerBtn) {
+    const emojiPickerElement = document.createElement('div');
+    emojiPickerElement.className = 'emoji-picker';
+    const commonEmojis = ['😀','😁','😂','🤣','😊','😇','😍','😘','😜','🤪','😎','😢','😭','😡','😳','😱','🤔','🤨','🙃','🤗'];
+    emojiPickerElement.innerHTML = commonEmojis.map(emoji => 
+        `<div class="emoji-option" data-emoji="${emoji}">${emoji}</div>`
+    ).join('');
+
+    // Make sure we're appending to the message element, not the button
+    el.appendChild(emojiPickerElement);
+
+    // Toggle emoji picker
+    emojiPickerBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        emojiPickerElement.style.display = emojiPickerElement.style.display === 'block' ? 'none' : 'block';
+    });
+
+    // Handle emoji selection
+    emojiPickerElement.querySelectorAll('.emoji-option').forEach(option => {
+        option.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const emoji = option.dataset.emoji;
+            await addReaction(msg.id, emoji);
+            emojiPickerElement.style.display = 'none';
+        });
+    });
+
+    // Close emoji picker when clicking elsewhere
+    document.addEventListener('click', () => {
+        emojiPickerElement.style.display = 'none';
+    });
+}
+
+// Handle reaction clicks
+el.querySelectorAll('.reaction').forEach(reaction => {
+    reaction.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const emoji = reaction.dataset.emoji;
+        await addReaction(msg.id, emoji);
+    });
+});
   if((isAdmin) || (currentUser && msg.username === currentUser.username && !msg.deleted)){
     const opt = document.createElement('div'); opt.className = 'options'; opt.textContent = '⋮';
     const menu = document.createElement('div'); menu.className = 'options-menu';
@@ -1036,19 +1165,14 @@ function initializeSupabase() {
 async function fetchRecent(){
   loadingDiv.style.display = 'flex';
   try {
-    let selectCols = 'id, username, content, message, text, created_at, timestamp';
-    let r = await supabase.from(TABLE).select(selectCols).order('created_at',{descending:true}).limit(300000000);
-    if (r.error) {
-      console.log('Select with candidate columns failed, trying select * — error:', r.error);
-      r = await supabase.from(TABLE).select('*').order('created_at',{descending:true}).limit(3000000);
-    }
+    // Try with simpler column selection first
+    let r = await supabase.from(TABLE).select('*').order('created_at', {ascending: true}).limit(300);
+    
     if (r.error) {
       console.error('Fetch failed:', r.error);
       showNotifyBanner('Fetch failed: ' + (r.error.message || JSON.stringify(r.error)));
       return;
     }
-    
-    
     
     messages = r.data.map(m => {
       const text = m.content || m.message || m.text || '';
@@ -1057,7 +1181,8 @@ async function fetchRecent(){
         username: m.username || 'anon',
         message: text,
         timestamp: m.timestamp || (m.created_at ? new Date(m.created_at).toLocaleTimeString() : ''),
-        deleted: m.deleted || false
+        deleted: m.deleted || false,
+        replies: m.replies || null // Add this for reactions
       };
     });
     
@@ -1087,7 +1212,8 @@ async function subscribeRealtime() {
           username: m.username || 'anon',
           message: text,
           timestamp: m.timestamp || (m.created_at ? new Date(m.created_at).toLocaleTimeString() : ''),
-          deleted: m.deleted || false
+          deleted: m.deleted || false,
+          replies: m.replies || null // Add this
         };
         
         const idx = messages.findIndex(msg => msg.id === newMessage.id);
@@ -1098,6 +1224,7 @@ async function subscribeRealtime() {
         }
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: TABLE }, (payload) => {
+        console.log('Realtime UPDATE:', payload.new); // Add this log
         const m = payload.new;
         const text = m.content || m.message || m.text || '';
         const updatedMessage = {
@@ -1105,13 +1232,15 @@ async function subscribeRealtime() {
           username: m.username || 'anon',
           message: text,
           timestamp: m.timestamp || (m.created_at ? new Date(m.created_at).toLocaleTimeString() : ''),
-          deleted: m.deleted || false
+          deleted: m.deleted || false,
+          replies: m.replies || null // Add this
         };
+        
         const idx = messages.findIndex(msg => msg.id === updatedMessage.id);
         if (idx !== -1) {
           messages[idx] = updatedMessage;
           saveLocalState();
-          clearChatAndRenderAll();
+          clearChatAndRenderAll(); // This will update all messages
         }
       })
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: TABLE }, (payload) => {
@@ -1470,10 +1599,80 @@ window.addEventListener('beforeunload', () => {
     console.log('Application fully initialized.');
 })();
 
+
+
+/* ==== Reaction Functions ==== */
+async function addReaction(messageId, emoji) {
+    if (!currentUser) return;
+    
+    try {
+        // Get current message
+        const message = messages.find(m => m.id === messageId);
+        if (!message) return;
+        
+        // Parse existing reactions or create empty object
+        const currentReactions = message.replies ? JSON.parse(message.replies) : {};
+        
+        // Initialize emoji array if it doesn't exist
+        if (!currentReactions[emoji]) {
+            currentReactions[emoji] = [];
+        }
+        
+        // Check if user already reacted with this emoji
+        const userIndex = currentReactions[emoji].indexOf(currentUser.username);
+        
+        if (userIndex > -1) {
+            // Remove reaction if user already reacted
+            currentReactions[emoji].splice(userIndex, 1);
+            // Remove emoji key if no reactions left
+            if (currentReactions[emoji].length === 0) {
+                delete currentReactions[emoji];
+            }
+        } else {
+            // Add reaction
+            currentReactions[emoji].push(currentUser.username);
+        }
+        
+        // Update message in local state
+        const messageIndex = messages.findIndex(m => m.id === messageId);
+        if (messageIndex > -1) {
+            messages[messageIndex].replies = JSON.stringify(currentReactions);
+            saveLocalState();
+        }
+        
+        // Update in Supabase - only update replies field
+        const updateData = { 
+            replies: JSON.stringify(currentReactions)
+        };
+        
+        const { error } = await supabase
+            .from(TABLE)
+            .update(updateData)
+            .eq('id', messageId);
+            
+        if (error) {
+            console.error('Error updating reactions:', error);
+            // Check if it's a column error
+            if (error.message && error.message.includes('column')) {
+                showNotifyBanner('Reactions not available yet');
+            } else {
+                showNotifyBanner('Failed to add reaction: ' + error.message);
+            }
+            return;
+        }
+        
+        // Re-render the message to show updated reactions
+        clearChatAndRenderAll();
+        
+    } catch (error) {
+        console.error('Error in addReaction:', error);
+        showNotifyBanner('Error adding reaction: ' + error.message);
+    }
+}
+
 // NOTE: Ensure your loadProfiles function is defined and accessible.
 </script>
 </body>
 </html>
-
 
 
