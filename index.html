@@ -576,6 +576,12 @@ a{color:#0a66c2;text-decoration:underline}
     font-size: 12px;
     cursor: pointer;
     transition: all 0.2s;
+    color: (--text-color);
+}
+.myMessage .reaction {
+    color: var(--message-my-text); /* This will be white in both themes */
+    background: rgba(255, 255, 255, 0.5); /* Semi-transparent white background */
+    border-color: rgba(255, 255, 255, 0.3);
 }
 
 .reaction:hover {
@@ -641,7 +647,7 @@ a{color:#0a66c2;text-decoration:underline}
     alt="Chatify Logo" 
     style="height: 30px; width: auto;"
   />
-  <span>Chatify (codename password)</span>
+  <span>Chatify (codename react)</span>
 </div>
 
     <div class="header-actions">
