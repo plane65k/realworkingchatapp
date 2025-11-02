@@ -370,10 +370,13 @@ header{
   border-bottom-left-radius:6px
 }
 .timestamp{
-  display:block;
-  font-size:11px;
-  color:var(--border-color);
-  margin-top:6px
+  display: block;
+  font-size: 10px;
+  color: var(--text-color);
+  margin-top: 0; /* Remove top margin since reactions has bottom margin */
+  text-align: right;
+  opacity: 0.7;
+  width: 24.67%;
 }
 .options{
   position:absolute;
@@ -591,8 +594,8 @@ a{color:#0a66c2;text-decoration:underline}
 
 .emoji-picker-btn {
     position: absolute;
-    top: 6px;
-    right: 30px;
+    bottom: 0px;
+    right: 4px; /* Move it to the inner edge */
     cursor: pointer;
     opacity: 0;
     transition: opacity 0.2s;
@@ -614,13 +617,20 @@ a{color:#0a66c2;text-decoration:underline}
     display: none;
     z-index: 10;
     box-shadow: 0 4px 12px var(--shadow-color);
+    width: 40px;
 }
 
 .emoji-option {
-    padding: 4px 8px;
+    flex: 1 1 calc(33.333% - 4px); /* Each takes 1/3 of width minus gap */
+    min-width: 10px; /* Minimum width for each emoji */
+    aspect-ratio: 1:2; /* Make them square */
+    display: flex;
+    align-items: center;
+    justify-content: center;
     cursor: pointer;
     border-radius: 4px;
-    margin: 2px;
+    font-size: 16px;
+    padding: 0; /* Remove padding since we're using flex centering */
 }
 
 .emoji-option:hover {
@@ -1040,15 +1050,20 @@ const reactionsHtml = reactions && Object.keys(reactions).length > 0 ?
     `<div class="reactions">${reactionButtons}</div>` : '';
 
 // Add emoji picker button
-const emojiPicker = `<div class="emoji-picker-btn" data-message="${msg.id}">😊</div>`;
+const emojiPicker = `<div class="emoji-picker-btn" data-message="${msg.id}">😁</div>`;
+
+
 
 // Update the el.innerHTML to include reactions and emoji picker
+
 el.innerHTML = `
     <img src="${escapeHtml(profilePic)}" alt="pfp" style="width:30px;height:30px;border-radius:50%;margin-right:10px;vertical-align:middle;">
     <div>${bannedNote}<strong>${escapeHtml(msg.username)}</strong>: ${content}</div>
-    <div class="timestamp">${escapeHtml(msg.timestamp || '')}</div>
+    
     ${reactionsHtml}
-    <div class="emoji-picker-btn" data-message="${msg.id}">😊</div>
+    <div class="emoji-picker-btn" data-message="${msg.id}">😁</div>
+   
+      <div class="timestamp">${escapeHtml(msg.timestamp || '')}</div>
 `;
 // Add emoji picker functionality
 // Add emoji picker functionality
@@ -1056,7 +1071,7 @@ const emojiPickerBtn = el.querySelector('.emoji-picker-btn');
 if (emojiPickerBtn) {
     const emojiPickerElement = document.createElement('div');
     emojiPickerElement.className = 'emoji-picker';
-    const commonEmojis = ['😀','😁','😂','🤣','😊','😇','😍','😘','😜','🤪','😎','😢','😭','😡','😳','😱','🤔','🤨','🙃','🤗'];
+    const commonEmojis = ['😀','😁','🤣','😍','🤪','😎','😢','😭','😡','😱','🤔','🤨','🙃','🤗','💀','🥀','✌️','🎋','🔥'];
     emojiPickerElement.innerHTML = commonEmojis.map(emoji => 
         `<div class="emoji-option" data-emoji="${emoji}">${emoji}</div>`
     ).join('');
@@ -1680,5 +1695,4 @@ async function addReaction(messageId, emoji) {
 </script>
 </body>
 </html>
-
 
