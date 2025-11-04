@@ -1187,7 +1187,7 @@ async function fetchRecent(){
   loadingDiv.style.display = 'flex';
   try {
     // Try with simpler column selection first
-    let r = await supabase.from(TABLE).select('*').order('created_at', {ascending: true}).limit(300);
+    let r = await supabase.from(TABLE).select('*').order('created_at', {ascending: true}).limit(300000);
     
     if (r.error) {
       console.error('Fetch failed:', r.error);
@@ -1695,4 +1695,3 @@ async function addReaction(messageId, emoji) {
 </script>
 </body>
 </html>
-
