@@ -1050,7 +1050,7 @@ const reactionsHtml = reactions && Object.keys(reactions).length > 0 ?
     `<div class="reactions">${reactionButtons}</div>` : '';
 
 // Add emoji picker button
-const emojiPicker = `<div class="emoji-picker-btn" data-message="${msg.id}">😁</div>`;
+const emojiPicker = `<div class="emoji-picker-btn" data-message="${msg.id}">😀</div>`;
 
 
 
@@ -1061,7 +1061,7 @@ el.innerHTML = `
     <div>${bannedNote}<strong>${escapeHtml(msg.username)}</strong>: ${content}</div>
     
     ${reactionsHtml}
-    <div class="emoji-picker-btn" data-message="${msg.id}">😁</div>
+    <div class="emoji-picker-btn" data-message="${msg.id}">😀</div>
    
       <div class="timestamp">${escapeHtml(msg.timestamp || '')}</div>
 `;
@@ -1071,7 +1071,7 @@ const emojiPickerBtn = el.querySelector('.emoji-picker-btn');
 if (emojiPickerBtn) {
     const emojiPickerElement = document.createElement('div');
     emojiPickerElement.className = 'emoji-picker';
-    const commonEmojis = ['😀','😁','🤣','😍','🤪','😎','😢','😭','😡','😱','🤔','🤨','🙃','🤗','💀','🥀','✌️','🎋','🔥'];
+    const commonEmojis = ['😀','😁','🤣','😍','🤪','😎','😭','😡','😱','🤔','🙃','🤗','💀','🥀','✌️','🎋','🔥'];
     emojiPickerElement.innerHTML = commonEmojis.map(emoji => 
         `<div class="emoji-option" data-emoji="${emoji}">${emoji}</div>`
     ).join('');
